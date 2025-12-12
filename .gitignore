@@ -218,6 +218,10 @@ __marimo__/
 # system files 
 *.DS_Store*
 
+# Ignore planning files
+*ROADMAP*
+*roadmap*
+
 # Ignore AI prompt files
 CLAUDE.md
 GEMINI.md

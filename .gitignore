@@ -215,6 +215,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# system files 
+*.DS_Store*
+
 # Ignore AI prompt files
 CLAUDE.md
 GEMINI.md

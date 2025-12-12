@@ -2,7 +2,7 @@
 
 **Spatial analysis tools for tissue biology**
 
-A Python package for analyzing spatial organization of cells in tissue samples, with support for spatial statistics, neighborhood analysis, Spatial LDA, and comprehensive visualization tools.
+A Python package for analyzing spatial organization of cells in tissue samples, with support for spatial statistics, network analysis, neighborhood analysis, Spatial LDA/TDA, agent-based modeling, and comprehensive visualization tools.
 
 ## Features
 
@@ -11,7 +11,10 @@ A Python package for analyzing spatial organization of cells in tissue samples, 
 - **Spatial LDA**: Latent Dirichlet Allocation for discovering recurrent cellular neighborhoods
   - Multi-sample mode: treats each sample as a document
   - Poisson disk ROI sampling: maximally samples ROIs from a single FOV
-- **Visualization Suite**: Comprehensive plotting tools for all spatial analyses
+- **Topological Data Analysis**: Mapper algorithm for building filtered spatial graphs and neighborhood detection (alpha available)
+- **Agent-based Modeling (ABM) Integration**: I/O for analysing and summarizing spatial output from ABM frameworks
+  - Currently supporting: PhysiCell
+- **Visualization Suite**: Comprehensive plotting tools for all spatial analyses (in progress)
 - **Multi-format I/O**: CSV, JSON, HDF5, AnnData support
 
 ## Installation
@@ -108,7 +111,7 @@ If you use this package in your research, please cite:
 @software{spatialtissuepy,
   title = {spatialtissuepy: Spatial analysis tools for tissue biology},
   author = {Eric Cramer},
-  year = {2024},
+  year = {2025},
   url = {https://github.com/spatialtissuepy/spatialtissuepy}
 }
 ```

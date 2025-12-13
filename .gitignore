@@ -225,3 +225,6 @@ __marimo__/
 # Ignore AI prompt files
 CLAUDE.md
 GEMINI.md
+
+# ignore any example physicell data
+*examples/sample_data/example_physicell_sim/*

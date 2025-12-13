@@ -228,3 +228,4 @@ GEMINI.md
 
 # ignore any example physicell data
 *examples/sample_data/example_physicell_sim/*
+*examples/sample_data/*.pkl

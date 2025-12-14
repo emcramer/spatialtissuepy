@@ -221,6 +221,8 @@ __marimo__/
 # Ignore planning files
 *ROADMAP*
 *roadmap*
+*_SUMMARY.md
+*PROGRESS.md
 
 # Ignore AI prompt files
 CLAUDE.md

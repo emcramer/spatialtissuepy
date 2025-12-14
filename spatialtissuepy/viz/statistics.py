@@ -83,7 +83,7 @@ def plot_ripleys_curve(
     
     # Determine radii
     if radii is None:
-        max_dist = min(coords[:, 0].ptp(), coords[:, 1].ptp()) / 4
+        max_dist = min(np.ptp(coords[:, 0]), np.ptp(coords[:, 1])) / 4
         radii = np.linspace(0, max_dist, 50)
     
     # Compute statistic

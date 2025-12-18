@@ -71,7 +71,7 @@ def plot_cell_graph(
     
     ax = get_axes(ax)
     
-    G = graph.graph
+    G = graph.G
     
     # Determine layout
     if layout == 'spatial':
@@ -236,7 +236,7 @@ def plot_graph_on_tissue(
     ax = get_axes(ax)
     
     coords = data._coordinates
-    G = graph.graph
+    G = graph.G
     
     # Collect edges for LineCollection (more efficient than individual lines)
     edge_segments = []
@@ -342,7 +342,8 @@ def plot_degree_distribution(
     
     ax = get_axes(ax)
     
-    G = graph.graph
+    G = graph.G
+    
     degrees = dict(G.degree())
     
     if by_type:
@@ -414,7 +415,8 @@ def plot_centrality_by_type(
     
     ax = get_axes(ax)
     
-    G = graph.graph
+    G = graph.G
+    
     cell_types = graph._cell_types
     unique_types = sorted(np.unique(cell_types))
     
@@ -512,7 +514,8 @@ def plot_type_mixing_matrix(
     
     ax = get_axes(ax)
     
-    G = graph.graph
+    G = graph.G
+    
     cell_types = graph._cell_types
     unique_types = sorted(np.unique(cell_types))
     n_types = len(unique_types)

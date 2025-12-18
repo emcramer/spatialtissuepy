@@ -219,6 +219,66 @@ def heterophily_ratio(graph: 'CellGraph') -> float:
     homo = homophily_ratio(graph)
     return 1 - homo if not np.isnan(homo) else np.nan
 
+def homophily_ratio_by_cell_type(graph: 'CellGraph') -> dict:
+    """
+    Vectorized computation of homophily ratio per cell type.
+    
+    Parameters
+    ----------
+    graph : CellGraph
+        Input cell graph.
+    
+    Returns
+    -------
+    dict
+        Dictionary mapping cell_type -> ratio (float).
+    """
+    # 1. Extract Edges
+    # Shape: (N_edges, 2)
+    edges = np.array(list(graph.G.edges()))
+    
+    if len(edges) == 0:
+        return {}
+
+    # 2. Map Node IDs to Cell Types
+    # We extract the source (u) and target (v) columns
+    u_nodes = edges[:, 0]
+    v_nodes = edges[:, 1]
+    
+    # Efficient lookup: fast iteration in list comp, then conversion to numpy array
+    # This works for integer or string node IDs
+    # Assumes graph.cell_types is a dict or supports __getitem__
+    u_types = np.array([graph.cell_types[n] for n in u_nodes])
+    v_types = np.array([graph.cell_types[n] for n in v_nodes])
+
+    # 3. Calculate Denominators (Total connections per type)
+    # Concatenate both sides to get all 'stubs'
+    all_stubs = np.concatenate([u_types, v_types])
+    # np.unique returns sorted unique elements and their counts
+    unique_types, counts_total = np.unique(all_stubs, return_counts=True)
+    # Create a quick lookup for totals
+    total_map = dict(zip(unique_types, counts_total))
+
+    # 4. Calculate Numerators (Same-type connections)
+    # Boolean mask where types match
+    mask = (u_types == v_types)
+    
+    # Filter for types involved in same-type edges
+    # We only need one side (u_types) since u == v
+    same_stubs = u_types[mask]
+    
+    unique_same, counts_same = np.unique(same_stubs, return_counts=True)
+    # Multiply by 2 because each edge counts for both nodes
+    same_map = dict(zip(unique_same, counts_same * 2))
+
+    # 5. Compute Ratios
+    # Iterate over total_map to ensure we include types with 0 homophily
+    ratios = {}
+    for c_type, total in total_map.items():
+        same = same_map.get(c_type, 0)
+        ratios[c_type] = same / total
+        
+    return ratios
 
 def type_pair_edge_fraction(
     graph: 'CellGraph',
@@ -398,3 +458,23 @@ def average_degree_connectivity(graph: 'CellGraph') -> Dict[int, float]:
         Degree to average neighbor degree.
     """
     return nx.average_degree_connectivity(graph.G)
+
+def average_node_degree(graph: 'CellGraph') -> Dict[int, float]:
+    """
+    Compute the average degree across all nodes in the graph. 
+
+    This gives an overall measure of how connected nodes in the graph are.
+
+    Parameters
+    ----------
+    graph : CellGraph
+        Input cell graph.
+
+    Returns
+    -------
+    float
+        Average degree of all nodes in the graph.
+    """
+    G = graph.G
+    node_degrees = np.array([G.degree(node) for node in G.nodes])
+    return np.mean(node_degrees)

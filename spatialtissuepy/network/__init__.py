@@ -129,6 +129,8 @@ from .assortativity import (
     neighbor_type_distribution,
     neighbor_type_matrix,
     average_degree_connectivity,
+    average_node_degree,
+    homophily_ratio_by_cell_type,
 )
 
 # Import metrics to register them with summary module

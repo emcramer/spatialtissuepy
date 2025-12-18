@@ -883,8 +883,8 @@ def connected_components_spatial(
                 labels[idx_map[node]] = i
         return labels
     
-    graph = CellGraph.from_spatial_data(data, method='radius', radius=radius)
-    components = list(nx.connected_components(graph.graph))
+    graph = CellGraph.from_spatial_data(data, method='proximity', radius=radius)
+    components = list(nx.connected_components(graph.to_networkx()))
     
     labels = np.zeros(data.n_cells, dtype=int)
     for i, component in enumerate(components):

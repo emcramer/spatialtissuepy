@@ -53,15 +53,21 @@ def topic_coherence(
     Higher coherence indicates more interpretable topics where the
     top cell types frequently co-occur in neighborhoods.
     """
-    from spatialtissuepy.spatial.neighborhood import neighborhood_counts
-    
-    # Get neighborhood counts
-    counts = neighborhood_counts(
+    from spatialtissuepy.spatial.neighborhood import compute_neighborhoods, neighborhood_counts
+
+    # Get neighborhoods present
+    neighborhoods = compute_neighborhoods(
         data,
         method=model.neighborhood_method,
         radius=model.neighborhood_radius,
         k=model.neighborhood_k,
         include_self=True
+    )
+    
+    # Get neighborhood counts
+    counts = neighborhood_counts(
+        data,
+        neighborhoods
     )
     
     n_cells = counts.shape[0]

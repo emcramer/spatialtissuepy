@@ -59,13 +59,13 @@ def plot_topic_composition(
     ax = get_axes(ax)
     
     # Get topic-word matrix (topics x cell types)
-    topic_word = model.model.components_
+    topic_word = model._lda_model.components_
     
     if normalize:
         topic_word = topic_word / topic_word.sum(axis=1, keepdims=True)
     
     # Get cell type names
-    cell_types = model._cell_types_order
+    cell_types = model.cell_types_
     
     # Plot heatmap
     im = ax.imshow(topic_word, cmap=cmap, aspect='auto', **kwargs)
@@ -193,7 +193,7 @@ def plot_topic_enrichment_heatmap(
     # Compute enrichment
     enrichment = topic_enrichment(model)
     
-    cell_types = model._cell_types_order
+    cell_types = model.cell_types_
     
     # Determine color limits
     vmax = np.nanpercentile(np.abs(enrichment), 95)
@@ -206,7 +206,7 @@ def plot_topic_enrichment_heatmap(
     if annot:
         for i in range(enrichment.shape[0]):
             for j in range(enrichment.shape[1]):
-                value = enrichment[i, j]
+                value = enrichment.iloc[i, j]
                 if np.isnan(value):
                     continue
                 color = 'white' if abs(value) > vmax * 0.5 else 'black'
@@ -404,15 +404,15 @@ def plot_lda_diagnostics(
         'Model Summary',
         '=' * 30,
         f'Number of topics: {model.n_topics}',
-        f'Number of cell types: {len(model._cell_types_order)}',
+        f'Number of cell types: {len(model.cell_types_order)}',
         f'Perplexity: {perplexity_text}',
         f'Mean assignment entropy: {np.mean(uncertainty):.3f}',
         f'Max topic weight (mean): {topic_means.max():.3f}',
         '',
         'Cell Types',
         '=' * 30,
-        ', '.join(model._cell_types_order[:10]),
-        '...' if len(model._cell_types_order) > 10 else '',
+        ', '.join(model.cell_types_[:10]),
+        '...' if len(model.cell_types_) > 10 else '',
     ]
     
     ax.text(0.1, 0.9, '\n'.join(info_text), transform=ax.transAxes,

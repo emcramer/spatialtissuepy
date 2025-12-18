@@ -136,7 +136,7 @@ def topic_assignment_uncertainty(
     """
     Compute entropy of topic assignments as uncertainty measure.
     
-    Higher entropy = more uncertain assignment (cell could belong to multiple topics).
+    Higher entropy = more uncertain assignment (cell could belong to multiple topics). Ranges from 0-1.
     
     Parameters
     ----------

@@ -114,14 +114,19 @@ def compute_neighborhood_counts(
     np.ndarray
         Integer count matrix of shape (n_cells, n_cell_types).
     """
-    from spatialtissuepy.spatial.neighborhood import neighborhood_counts
-    
-    return neighborhood_counts(
+    from spatialtissuepy.spatial.neighborhood import compute_neighborhoods, neighborhood_counts
+
+    neighborhoods = compute_neighborhoods(
         data,
         method=method,
         radius=radius,
         k=k,
         include_self=include_self
+    )
+    
+    return neighborhood_counts(
+        data,
+        neighborhoods
     )
 
 

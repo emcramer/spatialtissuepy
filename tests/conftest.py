@@ -16,6 +16,18 @@ from spatialtissuepy import SpatialTissueData
 
 
 # =============================================================================
+# Pytest Configuration
+# =============================================================================
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers", 
+        "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    )
+
+
+# =============================================================================
 # Path Fixtures
 # =============================================================================
 

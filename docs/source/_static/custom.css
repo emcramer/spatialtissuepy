@@ -1,0 +1,79 @@
+/* Custom CSS for spatialtissuepy documentation */
+
+/* Improve code block styling */
+.highlight pre {
+    border-radius: 4px;
+    padding: 12px;
+}
+
+/* Style for autodoc signatures */
+.sig-name {
+    font-weight: bold;
+}
+
+/* Improve table styling */
+table.docutils {
+    border-collapse: collapse;
+    margin: 1em 0;
+}
+
+table.docutils td, table.docutils th {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+}
+
+/* Style for admonitions */
+.admonition {
+    border-radius: 4px;
+    margin: 1em 0;
+}
+
+/* Style for example code */
+.admonition.example {
+    background-color: #f8f9fa;
+    border-left: 4px solid #0d6efd;
+}
+
+/* Improve sidebar navigation */
+.sidebar-primary-items__end {
+    padding-bottom: 20px;
+}
+
+/* Style for API documentation */
+.py.class dt,
+.py.function dt,
+.py.method dt {
+    background-color: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-top: 16px;
+}
+
+/* Card styling */
+.sd-card {
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.sd-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Grid item spacing */
+.sd-g-3 {
+    gap: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sd-row-cols-2 > * {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+/* Footer styling */
+footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}

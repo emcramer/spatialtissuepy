@@ -46,6 +46,10 @@ from .parser import (
     parse_cells_mat,
     parse_microenvironment_mat,
     get_cell_type_mapping,
+    is_alive,
+    is_dead,
+    get_phase_name,
+    CELL_CYCLE_PHASES,
 )
 
 __all__ = [
@@ -63,4 +67,9 @@ __all__ = [
     'parse_cells_mat',
     'parse_microenvironment_mat',
     'get_cell_type_mapping',
+    # Cell state helpers
+    'is_alive',
+    'is_dead',
+    'get_phase_name',
+    'CELL_CYCLE_PHASES',
 ]

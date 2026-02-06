@@ -90,8 +90,8 @@ class PhysiCellTimeStep(ABMTimeStep):
         if self.include_dead_cells:
             return len(data['cell_types'])
         else:
-            # Filter out dead cells
-            alive_mask = np.array([is_alive(p) for p in data['phases']])
+            # Filter out dead cells using dead_flags
+            alive_mask = data['dead_flags'] == 0
             return np.sum(alive_mask)
     
     @property
@@ -103,8 +103,7 @@ class PhysiCellTimeStep(ABMTimeStep):
     def n_dead_cells(self) -> int:
         """Number of dead cells."""
         data = self._load_cell_data()
-        dead_mask = np.array([not is_alive(p) for p in data['phases']])
-        return np.sum(dead_mask)
+        return np.sum(data['dead_flags'] == 1)
     
     @property
     def cell_types(self) -> List[str]:
@@ -119,7 +118,7 @@ class PhysiCellTimeStep(ABMTimeStep):
         if self.include_dead_cells:
             return data['positions']
         else:
-            alive_mask = np.array([is_alive(p) for p in data['phases']])
+            alive_mask = data['dead_flags'] == 0
             return data['positions'][alive_mask]
     
     @property
@@ -151,7 +150,7 @@ class PhysiCellTimeStep(ABMTimeStep):
             volumes = data['volumes']
             radii = data['radii']
         else:
-            alive_mask = np.array([is_alive(p) for p in data['phases']])
+            alive_mask = data['dead_flags'] == 0
             positions = data['positions'][alive_mask]
             cell_types = data['cell_types'][alive_mask]
             volumes = data['volumes'][alive_mask]
@@ -199,7 +198,8 @@ class PhysiCellTimeStep(ABMTimeStep):
             'volume': data['volumes'],
             'radius': data['radii'],
             'phase': data['phases'],
-            'is_alive': [is_alive(p) for p in data['phases']],
+            'is_dead': data['dead_flags'].astype(bool),
+            'is_alive': ~data['dead_flags'].astype(bool),
         })
         
         df['time'] = self.time
@@ -311,9 +311,10 @@ class PhysiCellSimulation(ABMSimulation):
             # Try to find settings XML in common locations
             settings_path = None
             for candidate in [
+                output_folder / 'config.xml',  # PhysiCell often copies config here
+                output_folder / 'PhysiCell_settings.xml',
                 output_folder.parent / 'config' / 'PhysiCell_settings.xml',
                 output_folder.parent / 'PhysiCell_settings.xml',
-                output_folder / 'PhysiCell_settings.xml',
             ]:
                 if candidate.exists():
                     settings_path = candidate
@@ -359,12 +360,17 @@ class PhysiCellSimulation(ABMSimulation):
         ----------
         index : int
             Time step index (0-based position in sorted list).
+            Supports negative indexing (e.g., -1 for last timestep).
             
         Returns
         -------
         PhysiCellTimeStep
             The requested time step.
         """
+        # Support negative indexing
+        if index < 0:
+            index = self.n_timesteps + index
+        
         if index < 0 or index >= self.n_timesteps:
             raise IndexError(f"Time step index out of range: {index}")
         
@@ -611,6 +617,39 @@ class PhysiCellExperiment(ABMExperiment):
 # Helper Functions
 # -----------------------------------------------------------------------------
 
+def _find_cells_mat_file(output_folder: Path, index: int) -> Optional[Path]:
+    """
+    Find the cells MAT file for a given output index.
+    
+    PhysiCell versions use different naming conventions:
+      - Newer versions (1.10+): output{index}_cells_physicell.mat
+      - Older versions: output{index}_cells.mat
+    
+    Parameters
+    ----------
+    output_folder : Path
+        Path to output folder.
+    index : int
+        Output file index.
+        
+    Returns
+    -------
+    Path or None
+        Path to the MAT file if found, None otherwise.
+    """
+    # Try newer naming convention first
+    mat_file_new = output_folder / f'output{index:08d}_cells_physicell.mat'
+    if mat_file_new.exists():
+        return mat_file_new
+    
+    # Fall back to older naming convention
+    mat_file_old = output_folder / f'output{index:08d}_cells.mat'
+    if mat_file_old.exists():
+        return mat_file_old
+    
+    return None
+
+
 def discover_physicell_timesteps(
     output_folder: Path
 ) -> List[Tuple[int, Path, Path]]:
@@ -639,10 +678,10 @@ def discover_physicell_timesteps(
         if match:
             index = int(match.group(1))
             
-            # Find corresponding MAT file
-            mat_file = output_folder / f'output{index:08d}_cells_physicell.mat'
+            # Find corresponding MAT file (handles both naming conventions)
+            mat_file = _find_cells_mat_file(output_folder, index)
             
-            if mat_file.exists():
+            if mat_file is not None:
                 timesteps.append((index, xml_file, mat_file))
     
     # Sort by index
@@ -678,16 +717,23 @@ def read_physicell_timestep(
     # Parse XML for metadata
     metadata = parse_physicell_xml(xml_path)
     
-    # Find corresponding MAT file
-    base_name = xml_path.stem  # e.g., "output00000087"
-    mat_path = xml_path.parent / f'{base_name}_cells_physicell.mat'
-    
-    if not mat_path.exists():
-        raise FileNotFoundError(f"Cell MAT file not found: {mat_path}")
-    
     # Extract index from filename
+    base_name = xml_path.stem  # e.g., "output00000087"
     match = re.search(r'output(\d+)', base_name)
     time_index = int(match.group(1)) if match else 0
+    
+    # Find corresponding MAT file (handles both naming conventions)
+    mat_path = _find_cells_mat_file(xml_path.parent, time_index)
+    
+    if mat_path is None:
+        # Provide helpful error message listing what was checked
+        mat_path_new = xml_path.parent / f'{base_name}_cells_physicell.mat'
+        mat_path_old = xml_path.parent / f'{base_name}_cells.mat'
+        raise FileNotFoundError(
+            f"Cell MAT file not found. Checked:\n"
+            f"  - {mat_path_new}\n"
+            f"  - {mat_path_old}"
+        )
     
     # Get cell type mapping if not provided
     if cell_type_mapping is None:

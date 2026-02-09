@@ -11,10 +11,12 @@ A Python package for analyzing spatial organization of cells in tissue samples, 
 - **Spatial LDA**: Latent Dirichlet Allocation for discovering recurrent cellular neighborhoods
   - Multi-sample mode: treats each sample as a document
   - Poisson disk ROI sampling: maximally samples ROIs from a single FOV
-- **Topological Data Analysis**: Mapper algorithm for building filtered spatial graphs and neighborhood detection (alpha available)
+- **Topological Data Analysis**: Mapper algorithm for building filtered spatial graphs and neighborhood detection
+- **Network Analysis**: Graph-based spatial analysis with centrality, clustering, and assortativity metrics
 - **Agent-based Modeling (ABM) Integration**: I/O for analysing and summarizing spatial output from ABM frameworks
   - Currently supporting: PhysiCell
-- **Visualization Suite**: Comprehensive plotting tools for all spatial analyses (in progress)
+- **Visualization Suite**: Comprehensive plotting tools for all spatial analyses
+- **MCP Server Integration**: Model Context Protocol server for LLM/AI agent access (97 tools)
 - **Multi-format I/O**: CSV, JSON, HDF5, AnnData support
 
 ## Installation
@@ -31,6 +33,11 @@ pip install spatialtissuepy[viz]
 For all optional dependencies:
 ```bash
 pip install spatialtissuepy[all]
+```
+
+For MCP server support (LLM/AI agent integration):
+```bash
+pip install spatialtissuepy[mcp]
 ```
 
 ## Quick Start
@@ -86,6 +93,38 @@ data = SpatialTissueData.from_csv(
 for sample_id, sample_data in data.iter_samples():
     print(f"{sample_id}: {sample_data.n_cells} cells")
 ```
+
+## MCP Server (LLM/AI Integration)
+
+spatialtissuepy includes a Model Context Protocol (MCP) server that enables LLMs and AI agents to perform spatial tissue analysis through 97 tools across 9 categories.
+
+**Start the server:**
+```bash
+spatialtissuepy-mcp --data-dir /path/to/data
+```
+
+**Claude Desktop configuration** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "spatialtissuepy": {
+      "command": "spatialtissuepy-mcp",
+      "args": ["--data-dir", "/path/to/tissue/data"]
+    }
+  }
+}
+```
+
+**Tool categories:**
+- `data_*` (14 tools): Load, save, inspect, subset data
+- `spatial_*` (7 tools): Distances, neighbors, density
+- `statistics_*` (10 tools): Ripley's K/L/H, colocalization, hotspots
+- `network_*` (14 tools): Graph construction, centrality, clustering
+- `lda_*` (8 tools): Spatial topic modeling
+- `topology_*` (10 tools): Mapper/TDA analysis
+- `summary_*` (8 tools): Feature extraction for ML
+- `synthetic_*` (9 tools): PhysiCell ABM integration
+- `viz_*` (17 tools): Visualization (returns base64 PNG)
 
 ## Requirements
 

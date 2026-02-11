@@ -137,14 +137,21 @@ def register_tools(mcp: "FastMCP") -> None:
         with open(sim_path, "wb") as f:
             pickle.dump(sim, f)
 
+        # Extract cell types from first timestep
+        cell_types = []
+        if sim.n_timesteps > 0:
+            first_ts = sim.get_timestep(0)
+            first_data = first_ts.to_spatial_data()
+            cell_types = [str(t) for t in first_data.cell_types_unique]
+
         return SimulationInfo(
             session_id=session_id,
             simulation_key=simulation_key,
             output_folder=str(path),
-            n_timesteps=len(sim.timesteps),
-            timestep_indices=list(sim.timesteps.keys()),
-            cell_types=list(sim.cell_types) if hasattr(sim, "cell_types") else [],
-            has_substrate=hasattr(sim, "substrates") and sim.substrates is not None,
+            n_timesteps=sim.n_timesteps,
+            timestep_indices=[int(i) for i in sim.time_indices],
+            cell_types=cell_types,
+            has_substrate=False,
         )
 
     @mcp.tool()
@@ -225,11 +232,12 @@ def register_tools(mcp: "FastMCP") -> None:
             sim = pickle.load(f)
 
         timesteps_info = []
-        for idx, ts in sim.timesteps.items():
+        for idx in range(sim.n_timesteps):
+            ts = sim.get_timestep(idx)
             timesteps_info.append({
                 "index": idx,
-                "time": ts.time if hasattr(ts, "time") else 0.0,
-                "n_cells": ts.n_cells if hasattr(ts, "n_cells") else 0,
+                "time": float(ts.time) if hasattr(ts, "time") else 0.0,
+                "n_cells": ts.to_spatial_data().n_cells,
             })
 
         return TimestepList(
@@ -363,14 +371,17 @@ def register_tools(mcp: "FastMCP") -> None:
         with open(sim_path, "rb") as f:
             sim = pickle.load(f)
 
-        trajectory = sim.cell_count_trajectory()
+        trajectory = sim.cell_counts_over_time()
 
-        times = list(trajectory.index)
-        total_counts = trajectory.sum(axis=1).tolist()
+        # Extract times and cell count columns
+        times = trajectory["time"].tolist() if "time" in trajectory.columns else list(trajectory.index)
+        count_cols = [c for c in trajectory.columns if c.startswith("n_")]
+        total_col = "total_cells" if "total_cells" in trajectory.columns else None
+        total_counts = trajectory[total_col].fillna(0).astype(int).tolist() if total_col else trajectory[count_cols].fillna(0).sum(axis=1).astype(int).tolist()
 
         by_type = {}
-        for col in trajectory.columns:
-            by_type[str(col)] = trajectory[col].tolist()
+        for col in count_cols:
+            by_type[str(col)] = trajectory[col].fillna(0).astype(int).tolist()
 
         return TrajectoryResult(
             session_id=session_id,
@@ -412,12 +423,20 @@ def register_tools(mcp: "FastMCP") -> None:
         with open(sim_path, "rb") as f:
             sim = pickle.load(f)
 
-        proportions = sim.type_proportions_over_time()
+        trajectory = sim.cell_counts_over_time()
 
-        times = list(proportions.index)
+        # Compute proportions from cell counts
+        times = trajectory["time"].tolist() if "time" in trajectory.columns else list(trajectory.index)
+        count_cols = [c for c in trajectory.columns if c.startswith("n_")]
+        counts_df = trajectory[count_cols].fillna(0)
+        row_totals = counts_df.sum(axis=1).replace(0, 1)  # avoid division by zero
+        proportions = counts_df.div(row_totals, axis=0)
+
         by_type = {}
         for col in proportions.columns:
-            by_type[str(col)] = proportions[col].tolist()
+            # Convert n_TypeName to prop_TypeName
+            prop_name = col.replace("n_", "prop_", 1)
+            by_type[prop_name] = proportions[col].tolist()
 
         return ProportionsResult(
             session_id=session_id,

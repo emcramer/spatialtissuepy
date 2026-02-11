@@ -169,9 +169,8 @@ def register_tools(mcp: "FastMCP") -> None:
         if data is None:
             raise ValueError(f"No data found with key '{data_key}'")
 
-        fig, ax = plt.subplots(figsize=(figsize_width, figsize_height))
-        plot_cell_types(data, ax=ax, s=point_size, legend=legend)
-        fig.tight_layout()
+        # plot_cell_types creates its own multi-panel figure (one panel per type)
+        fig = plot_cell_types(data, size=point_size)
 
         img_base64 = figure_to_base64(fig)
         plt.close(fig)
@@ -940,14 +939,16 @@ def register_tools(mcp: "FastMCP") -> None:
         with open(sim_path, "rb") as f:
             sim = pickle.load(f)
 
-        trajectory = sim.cell_count_trajectory()
+        trajectory = sim.cell_counts_over_time()
 
         fig, ax = plt.subplots(figsize=(figsize_width, figsize_height))
 
-        cols = metrics if metrics else list(trajectory.columns)
+        count_cols = [c for c in trajectory.columns if c.startswith("n_")]
+        cols = metrics if metrics else count_cols
+        x_vals = trajectory["time"] if "time" in trajectory.columns else trajectory.index
         for col in cols:
             if col in trajectory.columns:
-                ax.plot(trajectory.index, trajectory[col], label=col)
+                ax.plot(x_vals, trajectory[col], label=col)
 
         ax.set_xlabel("Time")
         ax.set_ylabel("Cell Count")

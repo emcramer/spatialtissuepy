@@ -369,13 +369,21 @@ def serialize_model(
             "neighborhood_radius": getattr(model, "neighborhood_radius", None),
             "neighborhood_method": getattr(model, "neighborhood_method", "radius"),
             "random_state": getattr(model, "random_state", None),
+            "is_fitted": getattr(model, "_is_fitted", False),
         }
 
         # Store fitted components if available
-        if hasattr(model, "components_") and model.components_ is not None:
-            result["components"] = model.components_.tolist()
-        if hasattr(model, "cell_types_") and model.cell_types_ is not None:
-            result["cell_types"] = list(model.cell_types_)
+        # Check both topic_cell_type_matrix_ (SpatialLDA) and components_ (sklearn)
+        components = getattr(model, "topic_cell_type_matrix_", None)
+        if components is None and hasattr(model, "_lda_model") and model._lda_model is not None:
+            components = getattr(model._lda_model, "components_", None)
+            
+        if components is not None:
+            result["components"] = components.tolist()
+            
+        cell_types = getattr(model, "cell_types_", None)
+        if cell_types is not None:
+            result["cell_types"] = list(cell_types)
 
         return result
 
@@ -437,6 +445,7 @@ def deserialize_model(
     if model_type == "spatial_lda":
         try:
             from spatialtissuepy.lda import SpatialLDA
+            from sklearn.decomposition import LatentDirichletAllocation
 
             model = SpatialLDA(
                 n_topics=data["n_topics"],
@@ -446,9 +455,22 @@ def deserialize_model(
             )
 
             if data.get("components"):
-                model.components_ = np.array(data["components"])
+                components = np.array(data["components"])
+                model.topic_cell_type_matrix_ = components
+                
+                # Reconstruct sklearn model for transformation
+                lda_model = LatentDirichletAllocation(
+                    n_components=data["n_topics"],
+                    random_state=data.get("random_state"),
+                )
+                lda_model.components_ = components
+                model._lda_model = lda_model
+                
             if data.get("cell_types"):
-                model.cell_types_ = np.array(data["cell_types"])
+                model.cell_types_ = list(data["cell_types"])
+                
+            if data.get("is_fitted"):
+                model._is_fitted = True
 
             return model
         except ImportError:

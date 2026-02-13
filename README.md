@@ -18,6 +18,7 @@ A Python package for analyzing spatial organization of cells in tissue samples, 
 - **Visualization Suite**: Comprehensive plotting tools for all spatial analyses
 - **MCP Server Integration**: Model Context Protocol server for LLM/AI agent access (97 tools)
 - **Multi-format I/O**: CSV, JSON, HDF5, AnnData support
+- **Comprehensive Testing**: 560+ tests with 100% module coverage
 
 ## Installation
 
@@ -93,6 +94,24 @@ data = SpatialTissueData.from_csv(
 for sample_id, sample_data in data.iter_samples():
     print(f"{sample_id}: {sample_data.n_cells} cells")
 ```
+
+## Tutorials
+
+A comprehensive set of Jupyter notebook tutorials is available in the `docs/tutorials/` directory:
+
+1. **Quickstart**: 5-minute introduction to core features
+2. **Data Loading**: In-depth guide to I/O and data validation
+3. **Spatial Analysis**: Core spatial operations and neighbor queries
+4. **Spatial Statistics**: Ripley's K, CLQ, and hotspot detection
+5. **Neighborhoods**: Local composition and diversity analysis
+6. **Network Analysis**: Building and analyzing cell graphs
+7. **Spatial LDA**: Topic modeling for discovering microenvironments
+8. **Topology**: Mapper algorithm and TDA workflows
+9. **Visualization**: Creating publication-quality plots
+10. **Multi-sample**: Comparative analysis across cohorts
+11. **ABM Integration**: Analyzing PhysiCell simulation outputs
+12. **Advanced Workflows**: Complex spatial analysis pipelines
+13. **Advanced TDA**: Deep dive into Mapper filter functions
 
 ## MCP Server (LLM/AI Integration)
 

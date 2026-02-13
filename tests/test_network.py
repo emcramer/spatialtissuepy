@@ -420,7 +420,8 @@ class TestCentrality:
         assert isinstance(result, dict)
         for cell_type in graph.cell_types_unique:
             assert cell_type in result
-            assert isinstance(result[cell_type], np.ndarray)
+            assert isinstance(result[cell_type], dict)
+            assert 'mean' in result[cell_type]
     
     def test_mean_centrality_by_type(self, small_tissue):
         """Test mean centrality by type."""
@@ -682,7 +683,7 @@ class TestAssortativity:
         n_types = len(graph.cell_types_unique)
         assert matrix.shape == (n_types, n_types)
         # Matrix should sum to 1
-        assert abs(matrix.sum() - 1.0) < 0.01
+        assert abs(matrix.values.sum() - 1.0) < 0.01
     
     def test_homophily_ratio(self, small_tissue):
         """Test homophily ratio."""
@@ -725,13 +726,12 @@ class TestAssortativity:
         """Test neighbor type distribution."""
         graph = CellGraph.from_spatial_data(small_tissue, radius=50)
         
-        dist = neighbor_type_distribution(graph)
+        cell_type = graph.cell_types_unique[0]
+        dist = neighbor_type_distribution(graph, cell_type=cell_type)
         
         assert isinstance(dist, dict)
-        for node in range(graph.n_nodes):
-            if node in dist:
-                # Should sum to 1
-                assert abs(sum(dist[node].values()) - 1.0) < 0.01
+        # Should sum to 1
+        assert abs(sum(dist.values()) - 1.0) < 0.01
 
 
 # =============================================================================

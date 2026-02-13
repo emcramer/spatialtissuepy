@@ -77,7 +77,7 @@ class CellGraph:
     ):
         _check_networkx()
         
-        self.G = graph
+        self._G = graph
         self._cell_types = np.asarray(cell_types)
         self._coordinates = np.asarray(coordinates)
         self._method = method
@@ -187,14 +187,23 @@ class CellGraph:
         return cls(G, cell_types, coordinates, method=method_str, params=kwargs)
     
     @property
+    def G(self) -> 'nx.Graph':
+        """Access underlying NetworkX graph (alias for backward compatibility)."""
+        return self._G
+
+    @G.setter
+    def G(self, value: 'nx.Graph'):
+        self._G = value
+
+    @property
     def n_nodes(self) -> int:
         """Number of nodes (cells)."""
-        return self.G.number_of_nodes()
-    
+        return self._G.number_of_nodes()
+
     @property
     def n_edges(self) -> int:
         """Number of edges."""
-        return self.G.number_of_edges()
+        return self._G.number_of_edges()
     
     @property
     def cell_types(self) -> np.ndarray:

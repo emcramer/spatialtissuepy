@@ -511,6 +511,12 @@ class SpatialTissueData:
             metadata=self._metadata.copy()
         )
 
+    def subset_sample(self, sample_id: str) -> 'SpatialTissueData':
+        """
+        Alias for subset(sample_ids=[sample_id]) for backward compatibility.
+        """
+        return self.subset(sample_ids=[sample_id])
+
     def iter_cells(self) -> Iterator[Cell]:
         """
         Iterate over all cells as Cell objects.

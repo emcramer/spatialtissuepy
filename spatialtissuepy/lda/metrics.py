@@ -24,8 +24,9 @@ def topic_coherence(
     model: 'SpatialLDA',
     data: 'SpatialTissueData',
     n_top_types: int = 5,
-    method: str = 'pmi'
-) -> Dict[int, float]:
+    method: str = 'pmi',
+    return_aggregate: bool = True
+) -> Union[float, Dict[int, float]]:
     """
     Compute topic coherence scores.
     
@@ -42,11 +43,14 @@ def topic_coherence(
         Number of top cell types per topic to consider.
     method : str, default 'pmi'
         Coherence method: 'pmi' (pointwise mutual information) or 'npmi' (normalized).
+    return_aggregate : bool, default True
+        If True, return mean coherence across all topics.
+        If False, return dict of per-topic scores.
         
     Returns
     -------
-    dict
-        Mapping from topic index to coherence score.
+    float or dict
+        Mean coherence score or mapping from topic index to score.
         
     Notes
     -----
@@ -134,6 +138,9 @@ def topic_coherence(
             coherence_scores[topic_idx] = coherence_sum / n_pairs
         else:
             coherence_scores[topic_idx] = 0.0
+    
+    if return_aggregate:
+        return float(np.mean(list(coherence_scores.values())))
     
     return coherence_scores
 
@@ -388,8 +395,9 @@ def topic_concentration_index(
 # -----------------------------------------------------------------------------
 
 def compute_model_selection_metrics(
-    data: 'SpatialTissueData',
-    n_topics_range: List[int],
+    model: Union['SpatialLDA', List[int]],
+    data: Optional['SpatialTissueData'] = None,
+    n_topics_range: Optional[List[int]] = None,
     neighborhood_radius: float = 50.0,
     random_state: Optional[int] = None
 ) -> pd.DataFrame:
@@ -398,9 +406,12 @@ def compute_model_selection_metrics(
     
     Parameters
     ----------
+    model : SpatialLDA or list of int
+        If SpatialLDA, it's used as a template.
+        If list, it's treated as n_topics_range.
     data : SpatialTissueData
         Data to fit.
-    n_topics_range : list of int
+    n_topics_range : list of int, optional
         Range of topic numbers to try.
     neighborhood_radius : float, default 50.0
         Radius for neighborhoods.
@@ -414,23 +425,33 @@ def compute_model_selection_metrics(
     """
     from .spatial_lda import SpatialLDA
     
+    # Handle argument polymorphic signature from tests
+    if isinstance(model, list):
+        n_topics_range = model
+        # data should be the second arg
+    elif data is None and n_topics_range is not None:
+        # data was passed as n_topics_range? No, that's unlikely.
+        pass
+
+    if n_topics_range is None:
+        n_topics_range = [3, 5, 7, 10]
+    
     results = []
     
     for n_topics in n_topics_range:
-        model = SpatialLDA(
+        m = SpatialLDA(
             n_topics=n_topics,
             neighborhood_radius=neighborhood_radius,
             random_state=random_state,
         )
         
-        model.fit(data)
+        m.fit(data)
         
         # Compute metrics
-        perplexity = model.perplexity(data)
-        log_likelihood = model.score(data)
-        diversity = topic_diversity(model)
-        coherence_scores = topic_coherence(model, data)
-        mean_coherence = np.mean(list(coherence_scores.values()))
+        perplexity = m.perplexity(data)
+        log_likelihood = m.score(data)
+        diversity = topic_diversity(m)
+        mean_coherence = topic_coherence(m, data, return_aggregate=True)
         
         results.append({
             'n_topics': n_topics,

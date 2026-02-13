@@ -106,9 +106,10 @@ def poisson_disk_sample(
 
 def grid_sample(
     data: 'SpatialTissueData',
-    spacing: float,
+    spacing: float = 50.0,
     jitter: float = 0.0,
-    seed: Optional[int] = None
+    seed: Optional[int] = None,
+    **kwargs
 ) -> np.ndarray:
     """
     Sample cells on a regular grid.
@@ -125,6 +126,8 @@ def grid_sample(
         Random jitter to add to grid points (as fraction of spacing).
     seed : int, optional
         Random seed for jitter.
+    **kwargs
+        Additional arguments, including grid_size (alias for spacing).
         
     Returns
     -------
@@ -136,6 +139,9 @@ def grid_sample(
     >>> indices = grid_sample(data, spacing=50, jitter=0.1)
     """
     rng = np.random.default_rng(seed)
+    
+    if 'grid_size' in kwargs:
+        spacing = kwargs.pop('grid_size')
     
     coords = data._coordinates
     bounds = data.bounds
@@ -205,9 +211,10 @@ def random_sample(
 
 def stratified_sample(
     data: 'SpatialTissueData',
-    n_samples: int,
+    n_samples: int = 100,
     by: str = 'cell_type',
-    seed: Optional[int] = None
+    seed: Optional[int] = None,
+    **kwargs
 ) -> np.ndarray:
     """
     Stratified sampling to maintain cell type proportions.
@@ -222,6 +229,8 @@ def stratified_sample(
         Stratification variable (currently only 'cell_type' supported).
     seed : int, optional
         Random seed.
+    **kwargs
+        Additional arguments, including n_per_type (multiplies by n_types).
         
     Returns
     -------
@@ -234,6 +243,9 @@ def stratified_sample(
     original composition in the sample.
     """
     rng = np.random.default_rng(seed)
+    
+    if 'n_per_type' in kwargs:
+        n_samples = kwargs.pop('n_per_type') * len(data.cell_types_unique)
     
     cell_types = data._cell_types
     unique_types = data.cell_types_unique

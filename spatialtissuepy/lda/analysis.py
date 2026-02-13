@@ -96,19 +96,19 @@ def topic_enrichment(
 
 
 def dominant_topic_per_cell(
-    model: 'SpatialLDA',
-    data: 'SpatialTissueData',
+    model: Union['SpatialLDA', np.ndarray],
+    data: Optional['SpatialTissueData'] = None,
     return_weights: bool = False
-) -> np.ndarray:
+) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """
     Get the dominant (most probable) topic for each cell.
     
     Parameters
     ----------
-    model : SpatialLDA
-        Fitted model.
-    data : SpatialTissueData
-        Data to analyze.
+    model : SpatialLDA or np.ndarray
+        Fitted model OR precomputed topic weight matrix.
+    data : SpatialTissueData, optional
+        Data to analyze (required if model is SpatialLDA).
     return_weights : bool, default False
         If True, also return the weight of the dominant topic.
         
@@ -119,7 +119,13 @@ def dominant_topic_per_cell(
     weights : np.ndarray, optional
         Weight of dominant topic (if return_weights=True).
     """
-    topic_weights = model.transform(data)
+    if isinstance(model, np.ndarray):
+        topic_weights = model
+    else:
+        if data is None:
+            raise ValueError("data required when providing SpatialLDA model")
+        topic_weights = model.transform(data)
+    
     dominant = np.argmax(topic_weights, axis=1)
     
     if return_weights:
@@ -130,27 +136,32 @@ def dominant_topic_per_cell(
 
 
 def topic_assignment_uncertainty(
-    model: 'SpatialLDA',
-    data: 'SpatialTissueData'
+    model: Union['SpatialLDA', np.ndarray],
+    data: Optional['SpatialTissueData'] = None
 ) -> np.ndarray:
     """
     Compute entropy of topic assignments as uncertainty measure.
     
-    Higher entropy = more uncertain assignment (cell could belong to multiple topics). Ranges from 0-1.
+    Higher entropy = more uncertain assignment. Ranges from 0-1.
     
     Parameters
     ----------
-    model : SpatialLDA
-        Fitted model.
-    data : SpatialTissueData
-        Data to analyze.
+    model : SpatialLDA or np.ndarray
+        Fitted model OR precomputed topic weight matrix.
+    data : SpatialTissueData, optional
+        Data to analyze (required if model is SpatialLDA).
         
     Returns
     -------
     np.ndarray
         Entropy values for each cell.
     """
-    topic_weights = model.transform(data)
+    if isinstance(model, np.ndarray):
+        topic_weights = model
+    else:
+        if data is None:
+            raise ValueError("data required when providing SpatialLDA model")
+        topic_weights = model.transform(data)
     
     # Compute entropy
     with np.errstate(divide='ignore', invalid='ignore'):

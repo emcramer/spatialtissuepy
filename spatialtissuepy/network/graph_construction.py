@@ -100,6 +100,7 @@ def build_knn_graph(
     cell_types: Optional[np.ndarray] = None,
     cell_ids: Optional[np.ndarray] = None,
     mutual: bool = False,
+    **kwargs
 ) -> 'nx.Graph':
     """
     Build a k-nearest neighbor graph.
@@ -117,6 +118,8 @@ def build_knn_graph(
     mutual : bool, default False
         If True, only include edges where both nodes are in each other's
         k-nearest neighbors (mutual kNN graph).
+    **kwargs
+        Additional arguments, including mutual_knn (alias for mutual).
     
     Returns
     -------
@@ -124,6 +127,10 @@ def build_knn_graph(
         k-NN graph.
     """
     _check_networkx()
+    
+    # Handle mutual_knn alias
+    if 'mutual_knn' in kwargs:
+        mutual = kwargs.pop('mutual_knn')
     
     n_cells = len(coordinates)
     G = nx.Graph()

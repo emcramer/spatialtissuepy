@@ -20,11 +20,18 @@ except ImportError:
     HAS_NETWORKX = False
 
 
+def _get_nx_graph(graph: Union['CellGraph', 'nx.Graph']) -> 'nx.Graph':
+    """Helper to extract NetworkX graph from CellGraph or return nx.Graph."""
+    if hasattr(graph, 'G'):
+        return graph.G
+    return graph
+
+
 # ============================================================================
 # Communicability
 # ============================================================================
 
-def communicability(graph: 'CellGraph') -> Dict[int, Dict[int, float]]:
+def communicability(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, Dict[int, float]]:
     """
     Compute communicability between all pairs of nodes.
     
@@ -33,8 +40,8 @@ def communicability(graph: 'CellGraph') -> Dict[int, Dict[int, float]]:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
@@ -45,10 +52,10 @@ def communicability(graph: 'CellGraph') -> Dict[int, Dict[int, float]]:
     -----
     This can be memory-intensive for large graphs.
     """
-    return nx.communicability(graph.G)
+    return nx.communicability(_get_nx_graph(graph))
 
 
-def communicability_exp(graph: 'CellGraph') -> Dict[int, Dict[int, float]]:
+def communicability_exp(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, Dict[int, float]]:
     """
     Compute communicability using matrix exponential.
     
@@ -56,18 +63,18 @@ def communicability_exp(graph: 'CellGraph') -> Dict[int, Dict[int, float]]:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     dict of dict
         Nested dict of communicability values.
     """
-    return nx.communicability_exp(graph.G)
+    return nx.communicability_exp(_get_nx_graph(graph))
 
 
-def communicability_betweenness(graph: 'CellGraph') -> Dict[int, float]:
+def communicability_betweenness(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
     """
     Compute communicability betweenness centrality.
     
@@ -76,15 +83,15 @@ def communicability_betweenness(graph: 'CellGraph') -> Dict[int, float]:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     dict
         Node index to communicability betweenness value.
     """
-    return nx.communicability_betweenness_centrality(graph.G)
+    return nx.communicability_betweenness_centrality(_get_nx_graph(graph))
 
 
 def communicability_between_types(
@@ -313,14 +320,14 @@ def shortest_path_length_between_types(
     }
 
 
-def average_shortest_path_length(graph: 'CellGraph') -> float:
+def average_shortest_path_length(graph: Union['CellGraph', 'nx.Graph']) -> float:
     """
     Compute average shortest path length for the graph.
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
@@ -328,60 +335,63 @@ def average_shortest_path_length(graph: 'CellGraph') -> float:
         Average shortest path length.
         Returns inf if graph is disconnected.
     """
-    if not nx.is_connected(graph.G):
+    G = _get_nx_graph(graph)
+    if not nx.is_connected(G):
         # Compute for largest component
-        largest_cc = max(nx.connected_components(graph.G), key=len)
-        subG = graph.G.subgraph(largest_cc)
+        largest_cc = max(nx.connected_components(G), key=len)
+        subG = G.subgraph(largest_cc)
         return nx.average_shortest_path_length(subG)
     
-    return nx.average_shortest_path_length(graph.G)
+    return nx.average_shortest_path_length(G)
 
 
-def diameter(graph: 'CellGraph') -> int:
+def diameter(graph: Union['CellGraph', 'nx.Graph']) -> int:
     """
     Compute graph diameter (maximum eccentricity).
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     int
         Diameter of the graph (or largest component if disconnected).
     """
-    if not nx.is_connected(graph.G):
-        largest_cc = max(nx.connected_components(graph.G), key=len)
-        subG = graph.G.subgraph(largest_cc)
+    G = _get_nx_graph(graph)
+    if not nx.is_connected(G):
+        largest_cc = max(nx.connected_components(G), key=len)
+        subG = G.subgraph(largest_cc)
         return nx.diameter(subG)
     
-    return nx.diameter(graph.G)
+    return nx.diameter(G)
 
 
-def radius(graph: 'CellGraph') -> int:
+def radius(graph: Union['CellGraph', 'nx.Graph']) -> int:
     """
     Compute graph radius (minimum eccentricity).
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     int
         Radius of the graph.
     """
-    if not nx.is_connected(graph.G):
-        largest_cc = max(nx.connected_components(graph.G), key=len)
-        subG = graph.G.subgraph(largest_cc)
+    G = _get_nx_graph(graph)
+    if not nx.is_connected(G):
+        largest_cc = max(nx.connected_components(G), key=len)
+        subG = G.subgraph(largest_cc)
         return nx.radius(subG)
     
-    return nx.radius(graph.G)
+    return nx.radius(G)
 
 
-def eccentricity(graph: 'CellGraph') -> Dict[int, int]:
+def eccentricity(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, int]:
     """
     Compute eccentricity for all nodes.
     
@@ -389,33 +399,34 @@ def eccentricity(graph: 'CellGraph') -> Dict[int, int]:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     dict
         Node index to eccentricity value.
     """
-    if not nx.is_connected(graph.G):
+    G = _get_nx_graph(graph)
+    if not nx.is_connected(G):
         # Only compute for largest component
-        largest_cc = max(nx.connected_components(graph.G), key=len)
-        subG = graph.G.subgraph(largest_cc)
+        largest_cc = max(nx.connected_components(G), key=len)
+        subG = G.subgraph(largest_cc)
         ecc = nx.eccentricity(subG)
         
         # Fill in inf for disconnected nodes
-        result = {n: np.inf for n in graph.G.nodes()}
+        result = {n: np.inf for n in G.nodes()}
         result.update(ecc)
         return result
     
-    return nx.eccentricity(graph.G)
+    return nx.eccentricity(G)
 
 
 # ============================================================================
 # Efficiency Metrics
 # ============================================================================
 
-def global_efficiency(graph: 'CellGraph') -> float:
+def global_efficiency(graph: Union['CellGraph', 'nx.Graph']) -> float:
     """
     Compute global efficiency of the graph.
     
@@ -424,18 +435,18 @@ def global_efficiency(graph: 'CellGraph') -> float:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     float
         Global efficiency between 0 and 1.
     """
-    return nx.global_efficiency(graph.G)
+    return nx.global_efficiency(_get_nx_graph(graph))
 
 
-def local_efficiency(graph: 'CellGraph') -> float:
+def local_efficiency(graph: Union['CellGraph', 'nx.Graph']) -> float:
     """
     Compute local efficiency of the graph.
     
@@ -443,25 +454,25 @@ def local_efficiency(graph: 'CellGraph') -> float:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     float
         Local efficiency.
     """
-    return nx.local_efficiency(graph.G)
+    return nx.local_efficiency(_get_nx_graph(graph))
 
 
-def nodal_efficiency(graph: 'CellGraph') -> Dict[int, float]:
+def nodal_efficiency(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
     """
     Compute local efficiency for each node.
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
@@ -470,16 +481,17 @@ def nodal_efficiency(graph: 'CellGraph') -> Dict[int, float]:
     """
     # NetworkX doesn't have per-node local efficiency, so compute manually
     result = {}
+    G = _get_nx_graph(graph)
     
-    for node in graph.G.nodes():
-        neighbors = list(graph.G.neighbors(node))
+    for node in G.nodes():
+        neighbors = list(G.neighbors(node))
         
         if len(neighbors) < 2:
             result[node] = 0.0
             continue
         
         # Subgraph of neighbors
-        subG = graph.G.subgraph(neighbors)
+        subG = G.subgraph(neighbors)
         result[node] = nx.global_efficiency(subG)
     
     return result

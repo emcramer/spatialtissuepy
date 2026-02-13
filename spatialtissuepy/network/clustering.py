@@ -20,11 +20,18 @@ except ImportError:
     HAS_NETWORKX = False
 
 
+def _get_nx_graph(graph: Union['CellGraph', 'nx.Graph']) -> 'nx.Graph':
+    """Helper to extract NetworkX graph from CellGraph or return nx.Graph."""
+    if hasattr(graph, 'G'):
+        return graph.G
+    return graph
+
+
 # ============================================================================
 # Clustering Coefficients
 # ============================================================================
 
-def clustering_coefficient(graph: 'CellGraph') -> Dict[int, float]:
+def clustering_coefficient(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
     """
     Compute local clustering coefficient for all nodes.
     
@@ -33,35 +40,38 @@ def clustering_coefficient(graph: 'CellGraph') -> Dict[int, float]:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     dict
         Node index to clustering coefficient.
     """
-    return nx.clustering(graph.G)
+    return nx.clustering(_get_nx_graph(graph))
 
 
-def average_clustering(graph: 'CellGraph') -> float:
+def average_clustering(graph: Union['CellGraph', 'nx.Graph']) -> float:
     """
     Compute average clustering coefficient for the graph.
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     float
         Average clustering coefficient.
     """
-    return nx.average_clustering(graph.G)
+    G = _get_nx_graph(graph)
+    if G.number_of_nodes() == 0:
+        return 0.0
+    return nx.average_clustering(G)
 
 
-def transitivity(graph: 'CellGraph') -> float:
+def transitivity(graph: Union['CellGraph', 'nx.Graph']) -> float:
     """
     Compute graph transitivity (global clustering coefficient).
     
@@ -69,18 +79,18 @@ def transitivity(graph: 'CellGraph') -> float:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     float
         Transitivity value between 0 and 1.
     """
-    return nx.transitivity(graph.G)
+    return nx.transitivity(_get_nx_graph(graph))
 
 
-def square_clustering(graph: 'CellGraph') -> Dict[int, float]:
+def square_clustering(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
     """
     Compute square clustering coefficient for all nodes.
     
@@ -89,32 +99,32 @@ def square_clustering(graph: 'CellGraph') -> Dict[int, float]:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     dict
         Node index to square clustering coefficient.
     """
-    return nx.square_clustering(graph.G)
+    return nx.square_clustering(_get_nx_graph(graph))
 
 
-def triangles(graph: 'CellGraph') -> Dict[int, int]:
+def triangles(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, int]:
     """
     Count triangles for each node.
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     dict
         Node index to triangle count.
     """
-    return nx.triangles(graph.G)
+    return nx.triangles(_get_nx_graph(graph))
 
 
 # ============================================================================
@@ -228,79 +238,80 @@ def triangles_by_type(graph: 'CellGraph') -> Dict[str, Dict[str, float]]:
 # Graph Structure
 # ============================================================================
 
-def connected_components(graph: 'CellGraph') -> List[set]:
+def connected_components(graph: Union['CellGraph', 'nx.Graph']) -> List[set]:
     """
     Find connected components in the graph.
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     list of set
         List of node sets, one per component, sorted by size (largest first).
     """
-    components = list(nx.connected_components(graph.G))
+    components = list(nx.connected_components(_get_nx_graph(graph)))
     return sorted(components, key=len, reverse=True)
 
 
-def n_connected_components(graph: 'CellGraph') -> int:
+def n_connected_components(graph: Union['CellGraph', 'nx.Graph']) -> int:
     """
     Count connected components.
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     int
         Number of connected components.
     """
-    return nx.number_connected_components(graph.G)
+    return nx.number_connected_components(_get_nx_graph(graph))
 
 
-def largest_component_size(graph: 'CellGraph') -> int:
+def largest_component_size(graph: Union['CellGraph', 'nx.Graph']) -> int:
     """
     Get size of the largest connected component.
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     int
         Number of nodes in largest component.
     """
-    if graph.n_nodes == 0:
+    G = _get_nx_graph(graph)
+    if G.number_of_nodes() == 0:
         return 0
-    components = connected_components(graph)
+    components = connected_components(G)
     return len(components[0]) if components else 0
 
 
-def bridges(graph: 'CellGraph') -> List[tuple]:
+def bridges(graph: Union['CellGraph', 'nx.Graph']) -> List[tuple]:
     """
     Find bridge edges whose removal disconnects the graph.
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     list of tuple
         List of (node_i, node_j) edge tuples that are bridges.
     """
-    return list(nx.bridges(graph.G))
+    return list(nx.bridges(_get_nx_graph(graph)))
 
 
-def articulation_points(graph: 'CellGraph') -> List[int]:
+def articulation_points(graph: Union['CellGraph', 'nx.Graph']) -> List[int]:
     """
     Find articulation points (cut vertices).
     
@@ -308,15 +319,15 @@ def articulation_points(graph: 'CellGraph') -> List[int]:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     list of int
         Node indices that are articulation points.
     """
-    return list(nx.articulation_points(graph.G))
+    return list(nx.articulation_points(_get_nx_graph(graph)))
 
 
 def articulation_points_by_type(graph: 'CellGraph') -> Dict[str, int]:

@@ -22,11 +22,18 @@ except ImportError:
     HAS_NETWORKX = False
 
 
+def _get_nx_graph(graph: Union['CellGraph', 'nx.Graph']) -> 'nx.Graph':
+    """Helper to extract NetworkX graph from CellGraph or return nx.Graph."""
+    if hasattr(graph, 'G'):
+        return graph.G
+    return graph
+
+
 # ============================================================================
 # Core Centrality Functions
 # ============================================================================
 
-def degree_centrality(graph: 'CellGraph') -> Dict[int, float]:
+def degree_centrality(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
     """
     Compute degree centrality for all nodes.
     
@@ -34,19 +41,19 @@ def degree_centrality(graph: 'CellGraph') -> Dict[int, float]:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     dict
         Node index to centrality value.
     """
-    return nx.degree_centrality(graph.G)
+    return nx.degree_centrality(_get_nx_graph(graph))
 
 
 def betweenness_centrality(
-    graph: 'CellGraph',
+    graph: Union['CellGraph', 'nx.Graph'],
     k: Optional[int] = None,
     normalized: bool = True,
     seed: Optional[int] = None,
@@ -59,8 +66,8 @@ def betweenness_centrality(
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     k : int, optional
         Number of source nodes to sample for approximation.
         If None, compute exact betweenness.
@@ -75,12 +82,12 @@ def betweenness_centrality(
         Node index to centrality value.
     """
     return nx.betweenness_centrality(
-        graph.G, k=k, normalized=normalized, seed=seed
+        _get_nx_graph(graph), k=k, normalized=normalized, seed=seed
     )
 
 
 def closeness_centrality(
-    graph: 'CellGraph',
+    graph: Union['CellGraph', 'nx.Graph'],
     wf_improved: bool = True,
 ) -> Dict[int, float]:
     """
@@ -90,8 +97,8 @@ def closeness_centrality(
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     wf_improved : bool, default True
         Use Wasserman-Faust improved formula for disconnected graphs.
     
@@ -100,11 +107,11 @@ def closeness_centrality(
     dict
         Node index to centrality value.
     """
-    return nx.closeness_centrality(graph.G, wf_improved=wf_improved)
+    return nx.closeness_centrality(_get_nx_graph(graph), wf_improved=wf_improved)
 
 
 def eigenvector_centrality(
-    graph: 'CellGraph',
+    graph: Union['CellGraph', 'nx.Graph'],
     max_iter: int = 100,
     tol: float = 1e-6,
 ) -> Dict[int, float]:
@@ -116,8 +123,8 @@ def eigenvector_centrality(
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     max_iter : int, default 100
         Maximum iterations for power method.
     tol : float, default 1e-6
@@ -128,15 +135,16 @@ def eigenvector_centrality(
     dict
         Node index to centrality value.
     """
+    G = _get_nx_graph(graph)
     try:
-        return nx.eigenvector_centrality(graph.G, max_iter=max_iter, tol=tol)
+        return nx.eigenvector_centrality(G, max_iter=max_iter, tol=tol)
     except nx.PowerIterationFailedConvergence:
         # Fall back to numpy version
-        return nx.eigenvector_centrality_numpy(graph.G)
+        return nx.eigenvector_centrality_numpy(G)
 
 
 def pagerank(
-    graph: 'CellGraph',
+    graph: Union['CellGraph', 'nx.Graph'],
     alpha: float = 0.85,
     max_iter: int = 100,
 ) -> Dict[int, float]:
@@ -147,8 +155,8 @@ def pagerank(
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     alpha : float, default 0.85
         Damping factor.
     max_iter : int, default 100
@@ -159,10 +167,10 @@ def pagerank(
     dict
         Node index to centrality value.
     """
-    return nx.pagerank(graph.G, alpha=alpha, max_iter=max_iter)
+    return nx.pagerank(_get_nx_graph(graph), alpha=alpha, max_iter=max_iter)
 
 
-def harmonic_centrality(graph: 'CellGraph') -> Dict[int, float]:
+def harmonic_centrality(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
     """
     Compute harmonic centrality for all nodes.
     
@@ -171,19 +179,19 @@ def harmonic_centrality(graph: 'CellGraph') -> Dict[int, float]:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     dict
         Node index to centrality value.
     """
-    return nx.harmonic_centrality(graph.G)
+    return nx.harmonic_centrality(_get_nx_graph(graph))
 
 
 def katz_centrality(
-    graph: 'CellGraph',
+    graph: Union['CellGraph', 'nx.Graph'],
     alpha: float = 0.1,
     beta: float = 1.0,
 ) -> Dict[int, float]:
@@ -195,8 +203,8 @@ def katz_centrality(
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     alpha : float, default 0.1
         Attenuation factor (should be < 1/lambda_max).
     beta : float, default 1.0
@@ -207,11 +215,11 @@ def katz_centrality(
     dict
         Node index to centrality value.
     """
-    return nx.katz_centrality(graph.G, alpha=alpha, beta=beta)
+    return nx.katz_centrality(_get_nx_graph(graph), alpha=alpha, beta=beta)
 
 
 def load_centrality(
-    graph: 'CellGraph',
+    graph: Union['CellGraph', 'nx.Graph'],
     normalized: bool = True,
 ) -> Dict[int, float]:
     """
@@ -222,8 +230,8 @@ def load_centrality(
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     normalized : bool, default True
         Normalize values.
     
@@ -232,10 +240,10 @@ def load_centrality(
     dict
         Node index to centrality value.
     """
-    return nx.load_centrality(graph.G, normalized=normalized)
+    return nx.load_centrality(_get_nx_graph(graph), normalized=normalized)
 
 
-def subgraph_centrality(graph: 'CellGraph') -> Dict[int, float]:
+def subgraph_centrality(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
     """
     Compute subgraph centrality for all nodes.
     
@@ -244,15 +252,15 @@ def subgraph_centrality(graph: 'CellGraph') -> Dict[int, float]:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     dict
         Node index to centrality value.
     """
-    return nx.subgraph_centrality(graph.G)
+    return nx.subgraph_centrality(_get_nx_graph(graph))
 
 
 # ============================================================================

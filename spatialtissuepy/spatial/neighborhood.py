@@ -45,7 +45,8 @@ def compute_neighborhoods(
     method: str = 'radius',
     radius: Optional[float] = None,
     k: Optional[int] = None,
-    include_self: bool = False
+    include_self: bool = False,
+    **kwargs
 ) -> List[np.ndarray]:
     """
     Compute neighborhoods for all cells.
@@ -62,6 +63,8 @@ def compute_neighborhoods(
         Number of neighbors (required if method='knn').
     include_self : bool, default False
         Whether to include the focal cell in its own neighborhood.
+    **kwargs
+        Additional arguments.
 
     Returns
     -------
@@ -169,8 +172,10 @@ def neighborhood_composition(
     method: str = 'radius',
     radius: Optional[float] = None,
     k: Optional[int] = None,
+    include_self: bool = False,
     normalize: bool = True,
-    pseudocount: float = 0.0
+    pseudocount: float = 0.0,
+    **kwargs
 ) -> np.ndarray:
     """
     Compute cell type composition (proportions) for each neighborhood.
@@ -187,10 +192,14 @@ def neighborhood_composition(
         Search radius for radius method.
     k : int, optional
         Number of neighbors for knn method.
+    include_self : bool, default False
+        Whether to include the focal cell in its own neighborhood.
     normalize : bool, default True
         Whether to normalize to proportions (sum to 1).
     pseudocount : float, default 0.0
         Small value added to counts before normalization to avoid zeros.
+    **kwargs
+        Additional arguments passed to compute_neighborhoods.
 
     Returns
     -------
@@ -214,10 +223,18 @@ def neighborhood_composition(
     """
     if neighborhoods is None:
         neighborhoods = compute_neighborhoods(
-            data, method=method, radius=radius, k=k
+            data, method=method, radius=radius, k=k, include_self=include_self, **kwargs
         )
     
     counts = neighborhood_counts(data, neighborhoods)
+    
+    if include_self:
+        # Add focal cell type to counts
+        unique_types = data.cell_types_unique
+        type_to_idx = {ct: i for i, ct in enumerate(unique_types)}
+        for i in range(data.n_cells):
+            ct = data._cell_types[i]
+            counts[i, type_to_idx[ct]] += 1
     
     if pseudocount > 0:
         counts = counts.astype(float) + pseudocount

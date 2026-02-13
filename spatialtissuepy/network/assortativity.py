@@ -21,11 +21,18 @@ except ImportError:
     HAS_NETWORKX = False
 
 
+def _get_nx_graph(graph: Union['CellGraph', 'nx.Graph']) -> 'nx.Graph':
+    """Helper to extract NetworkX graph from CellGraph or return nx.Graph."""
+    if hasattr(graph, 'G'):
+        return graph.G
+    return graph
+
+
 # ============================================================================
 # Assortativity Coefficients
 # ============================================================================
 
-def degree_assortativity(graph: 'CellGraph') -> float:
+def degree_assortativity(graph: Union['CellGraph', 'nx.Graph']) -> float:
     """
     Compute degree assortativity coefficient.
     
@@ -34,15 +41,15 @@ def degree_assortativity(graph: 'CellGraph') -> float:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     float
         Degree assortativity coefficient in [-1, 1].
     """
-    return nx.degree_assortativity_coefficient(graph.G)
+    return nx.degree_assortativity_coefficient(_get_nx_graph(graph))
 
 
 def type_assortativity(graph: 'CellGraph') -> float:
@@ -66,7 +73,7 @@ def type_assortativity(graph: 'CellGraph') -> float:
 
 
 def numeric_assortativity(
-    graph: 'CellGraph',
+    graph: Union['CellGraph', 'nx.Graph'],
     attribute: str
 ) -> float:
     """
@@ -74,8 +81,8 @@ def numeric_assortativity(
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     attribute : str
         Node attribute name (must be numeric).
     
@@ -84,7 +91,7 @@ def numeric_assortativity(
     float
         Numeric assortativity coefficient.
     """
-    return nx.numeric_assortativity_coefficient(graph.G, attribute)
+    return nx.numeric_assortativity_coefficient(_get_nx_graph(graph), attribute)
 
 
 # ============================================================================
@@ -318,21 +325,21 @@ def type_pair_edge_fraction(
 # Average Neighbor Degree
 # ============================================================================
 
-def average_neighbor_degree(graph: 'CellGraph') -> Dict[int, float]:
+def average_neighbor_degree(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
     """
     Compute average neighbor degree for all nodes.
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     dict
         Node index to average neighbor degree.
     """
-    return nx.average_neighbor_degree(graph.G)
+    return nx.average_neighbor_degree(_get_nx_graph(graph))
 
 
 def average_neighbor_degree_by_type(
@@ -441,7 +448,7 @@ def neighbor_type_matrix(graph: 'CellGraph') -> 'pd.DataFrame':
 # Degree Connectivity
 # ============================================================================
 
-def average_degree_connectivity(graph: 'CellGraph') -> Dict[int, float]:
+def average_degree_connectivity(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
     """
     Compute average degree connectivity.
     
@@ -449,15 +456,15 @@ def average_degree_connectivity(graph: 'CellGraph') -> Dict[int, float]:
     
     Parameters
     ----------
-    graph : CellGraph
-        Input cell graph.
+    graph : CellGraph or nx.Graph
+        Input graph.
     
     Returns
     -------
     dict
         Degree to average neighbor degree.
     """
-    return nx.average_degree_connectivity(graph.G)
+    return nx.average_degree_connectivity(_get_nx_graph(graph))
 
 def average_node_degree(graph: 'CellGraph') -> Dict[int, float]:
     """

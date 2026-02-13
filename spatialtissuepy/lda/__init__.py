@@ -55,6 +55,7 @@ from .spatial_lda import (
     SpatialLDA,
     fit_spatial_lda,
     compute_neighborhood_features,
+    compute_neighborhood_counts,
 )
 
 from .sampling import (
@@ -92,6 +93,7 @@ __all__ = [
     'SpatialLDA',
     'fit_spatial_lda',
     'compute_neighborhood_features',
+    'compute_neighborhood_counts',
     # Sampling
     'poisson_disk_sample',
     'grid_sample',

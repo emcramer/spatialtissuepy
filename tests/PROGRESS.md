@@ -45,14 +45,13 @@
 | **spatial** | ✅ 53 | ~540 | Distance, neighbors, metrics | 🔴 Critical |
 | **statistics** | ✅ 72 | ~680 | Ripley's, CLQ, hotspots | 🟡 Important |
 | **network** | ✅ 85 | ~730 | Graphs, centrality, assortativity | 🟡 Important |
-| **lda** | ✅ 78 | ~650 | Topic modeling, neighborhoods | 🟢 Advanced |
-| topology | ⏳ Next | TBD | Mapper/TDA | 🟢 Advanced |
-| synthetic | ⏳ Pending | TBD | PhysiCell I/O | 🟢 Advanced |
-| summary | ⏳ Pending | TBD | Panels, metrics | 🟡 Nice to have |
-| viz | ⏳ Pending | TBD | Plotting functions | 🟢 Nice to have |
+| **summary** | ✅ 25 | ~300 | Panels, metrics | 🟡 Important |
+| **topology** | ✅ 13 | ~200 | Mapper/TDA | 🟢 Advanced |
+| **synthetic** | ✅ 5 | ~100 | PhysiCell I/O | 🟢 Advanced |
+| **viz** | ✅ 11 | ~150 | Plotting functions | 🟢 Nice to have |
 
-**Current Coverage**: ~60% of package (6 of 10 modules)
-**Total Tests**: 366 tests across 6 modules
+**Current Coverage**: ~100% of modules have basic test suites.
+**Total Tests**: ~420 tests across all modules
 
 ## 🎯 Next Steps (Updated Order)
 

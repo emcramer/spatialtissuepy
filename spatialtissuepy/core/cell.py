@@ -132,8 +132,7 @@ class Cell:
         """
         if self.ndim != other.ndim:
             raise ValueError(
-                f"Cannot compute distance between {self.ndim}D and "
-                f"{other.ndim}D cells"
+                f"Cannot compute distance between cells with different dimensionality"
             )
         return float(np.linalg.norm(self.coordinates - other.coordinates))
 

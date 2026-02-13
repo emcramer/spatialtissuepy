@@ -1,5 +1,7 @@
 # spatialtissuepy
 
+[![Tests](https://github.com/emcramer/spatialtissuepy/actions/workflows/tests.yml/badge.svg)](https://github.com/emcramer/spatialtissuepy/actions/workflows/tests.yml)
+
 **Spatial analysis tools for tissue biology**
 
 A Python package for analyzing spatial organization of cells in tissue samples, with support for spatial statistics, network analysis, neighborhood analysis, Spatial LDA/TDA, agent-based modeling, and comprehensive visualization tools.

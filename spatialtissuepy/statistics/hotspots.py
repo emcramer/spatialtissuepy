@@ -38,8 +38,9 @@ def getis_ord_gi_star(
     data: 'SpatialTissueData',
     values: np.ndarray,
     radius: float,
-    standardize: bool = True
-) -> np.ndarray:
+    standardize: bool = True,
+    return_dict: bool = False
+) -> Union[np.ndarray, Dict[str, np.ndarray]]:
     """
     Compute Getis-Ord Gi* statistic for each cell.
 
@@ -55,10 +56,12 @@ def getis_ord_gi_star(
         Neighborhood radius for spatial weights.
     standardize : bool, default True
         If True, return z-scores; if False, return raw Gi*.
+    return_dict : bool, default False
+        If True, return a dictionary with key 'gi_star'.
 
     Returns
     -------
-    np.ndarray
+    np.ndarray or dict
         Gi* z-scores for each cell.
         - High positive values: Hotspots (clusters of high values)
         - High negative values: Coldspots (clusters of low values)
@@ -115,9 +118,13 @@ def getis_ord_gi_star(
     
     if not standardize:
         # Return raw Gi* (not z-score)
-        return gi_star * s / x_bar if x_bar != 0 else gi_star
+        result = gi_star * s / x_bar if x_bar != 0 else gi_star
+    else:
+        result = gi_star
     
-    return gi_star
+    if return_dict:
+        return {'gi_star': result}
+    return result
 
 
 def getis_ord_gi(
@@ -327,7 +334,8 @@ def detect_hotspots(
     radius: float,
     method: str = 'gi_star',
     alpha: float = 0.05,
-    correction: str = 'fdr'
+    correction: str = 'fdr',
+    **kwargs
 ) -> Dict[str, np.ndarray]:
     """
     Detect statistically significant hotspots and coldspots.
@@ -346,6 +354,8 @@ def detect_hotspots(
         Significance level.
     correction : str, default 'fdr'
         Multiple testing correction: 'none', 'bonferroni', or 'fdr'.
+    **kwargs
+        Additional arguments, including 'significance' (alias for alpha).
 
     Returns
     -------
@@ -358,6 +368,9 @@ def detect_hotspots(
         - 'hotspot_idx': Indices of hotspot cells
         - 'coldspot_idx': Indices of coldspot cells
     """
+    if 'significance' in kwargs:
+        alpha = kwargs.pop('significance')
+    
     n = len(values)
     
     if method == 'gi_star':
@@ -415,7 +428,8 @@ def cell_type_hotspots(
     cell_type: str,
     radius: float,
     method: str = 'gi_star',
-    alpha: float = 0.05
+    alpha: float = 0.05,
+    **kwargs
 ) -> Dict[str, np.ndarray]:
     """
     Detect hotspots and coldspots for a specific cell type.
@@ -435,6 +449,8 @@ def cell_type_hotspots(
         Detection method.
     alpha : float, default 0.05
         Significance level.
+    **kwargs
+        Additional arguments for detect_hotspots.
 
     Returns
     -------
@@ -450,7 +466,7 @@ def cell_type_hotspots(
     # Create binary indicator for cell type
     indicator = (data._cell_types == cell_type).astype(float)
     
-    return detect_hotspots(data, indicator, radius, method, alpha)
+    return detect_hotspots(data, indicator, radius, method, alpha, **kwargs)
 
 
 def marker_hotspots(
@@ -458,7 +474,8 @@ def marker_hotspots(
     marker: str,
     radius: float,
     method: str = 'gi_star',
-    alpha: float = 0.05
+    alpha: float = 0.05,
+    **kwargs
 ) -> Dict[str, np.ndarray]:
     """
     Detect hotspots and coldspots for marker expression.
@@ -475,6 +492,8 @@ def marker_hotspots(
         Detection method.
     alpha : float, default 0.05
         Significance level.
+    **kwargs
+        Additional arguments for detect_hotspots.
 
     Returns
     -------
@@ -489,7 +508,7 @@ def marker_hotspots(
     
     values = data.markers[marker].values
     
-    return detect_hotspots(data, values, radius, method, alpha)
+    return detect_hotspots(data, values, radius, method, alpha, **kwargs)
 
 
 # -----------------------------------------------------------------------------

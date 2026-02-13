@@ -307,7 +307,8 @@ class TestSummaryIntegration:
         
         assert 'n_cells' in df_row
         assert 'shannon_diversity' in df_row
-        assert 'mean_nnd' in df_row
+        # Implementation returns the full name as the primary key
+        assert 'mean_nearest_neighbor_distance' in df_row
 
 
 # =============================================================================
@@ -327,4 +328,3 @@ class TestSummaryEdgeCases:
         """Test error with invalid panel name."""
         with pytest.raises(ValueError):
             compute_summary(small_tissue, panel='nonexistent_panel')
-

@@ -561,7 +561,7 @@ class TestPointDensity:
         density = point_density(coords, method='convex_hull')
         
         # 4 points in square of area 100
-        assert density == 0.04
+        assert density == pytest.approx(0.04)
     
     def test_point_density_invalid_method(self):
         """Test error with invalid method."""

@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 class DistanceMetric(Enum):
     """Supported distance metrics."""
     EUCLIDEAN = 'euclidean'
-    MANHATTAN = 'manhattan'
+    MANHATTAN = 'cityblock'
     CHEBYSHEV = 'chebyshev'
     MINKOWSKI = 'minkowski'
 
@@ -70,6 +70,9 @@ def pairwise_distances(
            [1.        , 0.        , 1.41421356],
            [1.        , 1.41421356, 0.        ]])
     """
+    # Map manhattan to cityblock for scipy
+    if metric == 'manhattan':
+        metric = 'cityblock'
     return cdist(coordinates, coordinates, metric=metric, **kwargs)
 
 
@@ -106,6 +109,9 @@ def pairwise_distances_between(
     array([[2.        , 2.        ],
            [1.41421356, 1.41421356]])
     """
+    # Map manhattan to cityblock for scipy
+    if metric == 'manhattan':
+        metric = 'cityblock'
     return cdist(coords_a, coords_b, metric=metric, **kwargs)
 
 
@@ -143,6 +149,9 @@ def condensed_distances(
     >>> condensed_distances(coords)
     array([1.        , 1.        , 1.41421356])
     """
+    # Map manhattan to cityblock for scipy
+    if metric == 'manhattan':
+        metric = 'cityblock'
     return pdist(coordinates, metric=metric, **kwargs)
 
 

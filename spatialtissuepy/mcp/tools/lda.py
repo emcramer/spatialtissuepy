@@ -441,7 +441,7 @@ def register_tools(mcp: "FastMCP") -> None:
         if data is None:
             raise ValueError(f"No data found with key '{data_key}'")
 
-        result = spatial_consistency(model, data, radius=radius)
+        result = spatial_topic_consistency(model, data, radius=radius)
 
         if isinstance(result, dict):
             overall = result.get("overall", 0)

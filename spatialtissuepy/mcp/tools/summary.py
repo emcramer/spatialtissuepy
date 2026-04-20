@@ -288,12 +288,27 @@ def register_tools(mcp: "FastMCP") -> None:
         dict
             Feature name to value mapping.
         """
-        result = summary_compute(
-            session_id=session_id,
-            data_key=data_key,
-            panel_key=panel_key,
-        )
-        return result.features
+        # Call the underlying library directly rather than the decorated
+        # summary_compute() tool -- FastMCP wraps @mcp.tool() functions in
+        # a FunctionTool object that is not directly callable.
+        from spatialtissuepy.summary import SpatialSummary
+        from ..server import get_session_manager
+
+        session_mgr = get_session_manager()
+        data = session_mgr.load_data(session_id, data_key)
+        panel = session_mgr.load_panel(session_id, panel_key)
+
+        if data is None:
+            raise ValueError(f"No data found with key '{data_key}'")
+        if panel is None:
+            raise ValueError(f"No panel found with key '{panel_key}'")
+
+        summary = SpatialSummary(data, panel)
+        features = summary.to_dict()
+        return {
+            k: float(v) if isinstance(v, (int, float)) else v
+            for k, v in features.items()
+        }
 
     @mcp.tool()
     def summary_to_array(

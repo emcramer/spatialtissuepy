@@ -158,14 +158,31 @@ def _compute_ripleys(
     if data is None:
         raise ValueError(f"No data found with key '{data_key}'")
 
+    # Mask-based selection so an unknown cell_type produces an actionable
+    # error instead of a generic 'Coordinates array is empty'.
     if cell_type:
-        data = data.subset(cell_types=[cell_type])
+        mask = (data._cell_types == cell_type)
+        n_type = int(mask.sum())
+        if n_type < 2:
+            raise ValueError(
+                f"Too few cells of type '{cell_type}' ({n_type}) -- "
+                "Ripley's statistics require at least 2 points. "
+                "Returning zeros silently would corrupt downstream analysis."
+            )
+        coords = data.coordinates[mask]
+    else:
+        if data.n_cells < 2:
+            raise ValueError(
+                f"Too few cells ({data.n_cells}) -- Ripley's statistics "
+                "require at least 2 points. Returning zeros silently would "
+                "corrupt downstream analysis."
+            )
+        coords = data.coordinates
 
     if radii is None:
         radii = np.linspace(10, max_radius, n_radii).tolist()
 
     radii_arr = np.array(radii)
-    coords = data.coordinates
 
     K = ripleys_k(coords, radii=radii_arr, edge_correction=edge_correction)
     L = ripleys_l(coords, radii=radii_arr, edge_correction=edge_correction)
@@ -190,7 +207,7 @@ def _compute_ripleys(
         session_id=session_id,
         data_key=data_key,
         cell_type=cell_type,
-        n_cells=data.n_cells,
+        n_cells=len(coords),
         radii=radii,
         k_values=K.tolist(),
         l_values=L.tolist(),
@@ -465,7 +482,22 @@ def register_tools(mcp: "FastMCP") -> None:
 
         radii_arr = np.array(radii)
 
-        K_cross = cross_k_function(data, type_a, type_b, radii=radii_arr)
+        # Use mask-based selection to avoid the subset()'s stricter empty
+        # validation -- we want to return an informative error, not a generic
+        # 'Coordinates array is empty'.
+        mask_a = (data._cell_types == type_a)
+        mask_b = (data._cell_types == type_b)
+        n_a, n_b = int(mask_a.sum()), int(mask_b.sum())
+        if n_a < 2 or n_b < 2:
+            raise ValueError(
+                f"Too few cells of type '{type_a}' ({n_a}) or "
+                f"'{type_b}' ({n_b}) -- cross-K requires at least 2 points "
+                "per type"
+            )
+        coords_a = data.coordinates[mask_a]
+        coords_b = data.coordinates[mask_b]
+
+        K_cross = cross_k(coords_a, coords_b, radii=radii_arr)
 
         # Compare to CSR expectation
         K_csr = np.pi * radii_arr**2
@@ -532,7 +564,16 @@ def register_tools(mcp: "FastMCP") -> None:
         if data is None:
             raise ValueError(f"No data found with key '{data_key}'")
 
-        gi_star = getis_ord_gi_star(data, radius=radius, cell_type=cell_type)
+        # Build the values array the library expects: binary indicator for
+        # the requested cell type, or uniform weights for overall density.
+        if cell_type is not None:
+            values = (data._cell_types == cell_type).astype(float)
+            if values.sum() == 0:
+                raise ValueError(f"No cells of type '{cell_type}' found")
+        else:
+            values = np.ones(data.n_cells)
+
+        gi_star = getis_ord_gi_star(data, values, radius=radius)
 
         # Determine significance thresholds
         z_threshold = stats.norm.ppf(1 - significance_level / 2)
@@ -597,14 +638,17 @@ def register_tools(mcp: "FastMCP") -> None:
         if data.markers is None or marker not in data.markers.columns:
             raise ValueError(f"Marker '{marker}' not found in data")
 
-        result = morans_i(data, marker=marker, radius=radius)
+        values = data.markers[marker].to_numpy(dtype=float)
+        result = morans_i(data, values, radius=radius)
 
-        # Extract results (assuming morans_i returns dict or object)
+        # spatialtissuepy.statistics.morans_i returns a dict with keys
+        # 'I', 'expected', 'variance', 'zscore', 'pvalue'. Fall back to
+        # legacy aliases for forward/backward compatibility.
         if isinstance(result, dict):
             I = result.get("I", result.get("morans_i", 0))
-            E_I = result.get("expected_I", -1 / (data.n_cells - 1))
-            z = result.get("z_score", 0)
-            p = result.get("p_value", 1)
+            E_I = result.get("expected", result.get("expected_I", -1 / (data.n_cells - 1)))
+            z = result.get("zscore", result.get("z_score", 0))
+            p = result.get("pvalue", result.get("p_value", 1))
         else:
             I = float(result)
             E_I = -1 / (data.n_cells - 1)
@@ -679,15 +723,31 @@ def register_tools(mcp: "FastMCP") -> None:
         if data is None:
             raise ValueError(f"No data found with key '{data_key}'")
 
+        # Mask-based selection gives a better error than subset()'s generic
+        # 'Coordinates array is empty' when the requested type is absent.
         if cell_type:
-            data = data.subset(cell_types=[cell_type])
+            mask = (data._cell_types == cell_type)
+            n_type = int(mask.sum())
+            if n_type < 2:
+                raise ValueError(
+                    f"Too few cells of type '{cell_type}' ({n_type}) -- "
+                    "pair correlation requires at least 2 points"
+                )
+            coords = data.coordinates[mask]
+        else:
+            coords = data.coordinates
+            if len(coords) < 2:
+                raise ValueError(
+                    f"Too few cells ({len(coords)}) -- pair correlation "
+                    "requires at least 2 points"
+                )
 
         if radii is None:
             radii = np.linspace(10, max_radius, n_radii).tolist()
 
         radii_arr = np.array(radii)
 
-        g = pair_correlation_function(data, radii=radii_arr)
+        g = pair_correlation_function(coords, radii=radii_arr)
 
         max_g = float(np.max(g))
         max_g_idx = int(np.argmax(g))
@@ -739,6 +799,7 @@ def register_tools(mcp: "FastMCP") -> None:
             G function values and mean NN distance.
         """
         from spatialtissuepy.statistics import g_function
+        from spatialtissuepy.spatial import nearest_neighbors
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -750,12 +811,23 @@ def register_tools(mcp: "FastMCP") -> None:
         if cell_type:
             data = data.subset(cell_types=[cell_type])
 
-        distances, g_values = nearest_neighbor_g_function(data, n_distances=n_distances)
+        coords = data.coordinates
+        if len(coords) < 2:
+            raise ValueError(
+                f"Too few cells ({len(coords)}) -- G-function requires "
+                "at least 2 points"
+            )
 
-        # Compute mean NN distance
-        from spatialtissuepy.spatial import nearest_neighbors
-        _, nn_dists = nearest_neighbors(data, k=1)
-        mean_nn = float(np.mean(nn_dists))
+        # Compute mean NN distance and use it to size the radii grid
+        nn_dists_arr, _ = nearest_neighbors(coords, k=1)
+        mean_nn = float(np.mean(nn_dists_arr))
+
+        # G(r) saturates well before the 99th-percentile NN distance * 3 --
+        # use that as a sensible upper bound for the evaluation grid
+        max_r = float(np.percentile(nn_dists_arr, 99)) * 3.0
+        radii_arr = np.linspace(0.0, max_r, n_distances)
+        g_values = g_function(coords, radii=radii_arr)
+        distances = radii_arr
 
         if mean_nn < np.median(distances):
             interpretation = "Cells are more clustered than CSR (small NN distances)"
@@ -806,37 +878,13 @@ def register_tools(mcp: "FastMCP") -> None:
         MarkCorrelationResult
             Mark correlation values kmm(r).
         """
-        from spatialtissuepy.statistics import mark_correlation
-        from ..server import get_session_manager
-
-        session_mgr = get_session_manager()
-        data = session_mgr.load_data(session_id, data_key)
-
-        if data is None:
-            raise ValueError(f"No data found with key '{data_key}'")
-
-        if data.markers is None or marker not in data.markers.columns:
-            raise ValueError(f"Marker '{marker}' not found in data")
-
-        if radii is None:
-            radii = np.linspace(10, max_radius, n_radii).tolist()
-
-        radii_arr = np.array(radii)
-
-        kmm = mark_correlation(data, marker=marker, radii=radii_arr)
-
-        if np.mean(kmm) > 1.1:
-            interpretation = f"Positive mark correlation: similar {marker} values cluster together"
-        elif np.mean(kmm) < 0.9:
-            interpretation = f"Negative mark correlation: dissimilar {marker} values are neighbors"
-        else:
-            interpretation = f"No significant mark correlation for {marker}"
-
-        return MarkCorrelationResult(
-            session_id=session_id,
-            data_key=data_key,
-            marker=marker,
-            radii=radii,
-            kmm_values=kmm.tolist(),
-            interpretation=interpretation,
+        # Stoyan's mark correlation function kmm(r) is not yet implemented in
+        # the spatialtissuepy library. Use statistics_morans_i for marker
+        # spatial autocorrelation, or statistics_mark_correlation will be
+        # re-enabled once an implementation lands in
+        # spatialtissuepy.statistics.
+        raise NotImplementedError(
+            "mark_correlation is not yet implemented in the spatialtissuepy "
+            "library. As an alternative, use statistics_morans_i to measure "
+            "spatial autocorrelation of marker '%s'." % marker
         )

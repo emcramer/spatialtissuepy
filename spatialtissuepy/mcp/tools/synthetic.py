@@ -326,17 +326,32 @@ def register_tools(mcp: "FastMCP") -> None:
         dict
             Data info after conversion.
         """
-        result = synthetic_get_timestep(
-            session_id=session_id,
-            timestep_index=timestep_index,
-            simulation_key=simulation_key,
-            data_key=data_key,
-        )
+        # Call the underlying logic directly rather than the decorated
+        # synthetic_get_timestep() tool -- FastMCP wraps @mcp.tool() functions
+        # in a FunctionTool object that is not directly callable.
+        from ..server import get_session_manager
+        import pickle
+
+        session_mgr = get_session_manager()
+
+        sim_path = session_mgr.base_dir / session_id / "models" / f"{simulation_key}.pkl"
+        if not sim_path.exists():
+            raise ValueError(f"No simulation found with key '{simulation_key}'")
+
+        with open(sim_path, "rb") as f:
+            sim = pickle.load(f)
+
+        timestep = sim.get_timestep(timestep_index)
+        data = timestep.to_spatial_data()
+
+        out_key = data_key or f"timestep_{timestep_index}"
+        session_mgr.store_data(session_id, out_key, data)
+
         return {
-            "session_id": result.session_id,
-            "data_key": data_key or f"timestep_{timestep_index}",
-            "n_cells": result.n_cells,
-            "cell_type_counts": result.cell_type_counts,
+            "session_id": session_id,
+            "data_key": out_key,
+            "n_cells": data.n_cells,
+            "cell_type_counts": dict(data.cell_type_counts),
         }
 
     @mcp.tool()

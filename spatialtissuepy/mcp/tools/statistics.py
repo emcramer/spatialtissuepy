@@ -451,7 +451,7 @@ def register_tools(mcp: "FastMCP") -> None:
         CrossKResult
             Cross-K values and interpretation.
         """
-        from spatialtissuepy.statistics import cross_k_function
+        from spatialtissuepy.statistics import cross_k
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -738,7 +738,7 @@ def register_tools(mcp: "FastMCP") -> None:
         GFunctionResult
             G function values and mean NN distance.
         """
-        from spatialtissuepy.statistics import nearest_neighbor_g_function
+        from spatialtissuepy.statistics import g_function
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()

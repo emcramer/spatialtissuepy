@@ -151,7 +151,7 @@ def register_tools(mcp: "FastMCP") -> None:
             n_intervals=n_intervals,
             overlap=overlap,
             neighborhood_radius=neighborhood_radius,
-            clustering_method=clustering_method,
+            clustering=clustering_method,
             min_cluster_size=min_cluster_size,
         )
 

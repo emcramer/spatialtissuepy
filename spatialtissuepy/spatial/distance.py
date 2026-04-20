@@ -214,10 +214,10 @@ def nearest_neighbors(
 
     Returns
     -------
-    indices : np.ndarray
-        Neighbor indices of shape (n_points, k).
     distances : np.ndarray, optional
         Distances to neighbors of shape (n_points, k). Only if return_distances=True.
+    indices : np.ndarray
+        Neighbor indices of shape (n_points, k).
 
     Examples
     --------

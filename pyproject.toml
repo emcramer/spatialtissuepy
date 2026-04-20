@@ -65,6 +65,7 @@ progress = [
 mcp = [
     "fastmcp>=2.0,<3",
     "pydantic>=2.0",
+    "networkx>=2.6",
 ]
 all = [
     "matplotlib>=3.3",

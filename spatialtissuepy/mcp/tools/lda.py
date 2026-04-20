@@ -429,7 +429,7 @@ def register_tools(mcp: "FastMCP") -> None:
         SpatialConsistencyResult
             Consistency score overall and per topic.
         """
-        from spatialtissuepy.lda import spatial_consistency
+        from spatialtissuepy.lda import spatial_topic_consistency
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()

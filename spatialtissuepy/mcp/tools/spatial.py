@@ -229,7 +229,7 @@ def register_tools(mcp: "FastMCP") -> None:
             data = data.subset(cell_types=[cell_type])
 
         # Compute nearest neighbors
-        indices, distances = nearest_neighbors(data.coordinates, k=k)
+        distances, indices = nearest_neighbors(data.coordinates, k=k)
 
         # Distance to first nearest neighbor (excluding self)
         nn1_distances = distances[:, 0] if distances.shape[1] > 0 else distances.flatten()

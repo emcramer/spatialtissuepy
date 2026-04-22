@@ -103,6 +103,44 @@ class MetricInfo:
         custom_str = ", custom=True" if self.is_custom else ""
         return f"MetricInfo(name={self.name!r}, category={self.category!r}{custom_str})"
 
+    def __reduce__(self):
+        """Pickle by registry name, not by function reference.
+
+        The ``func`` attribute is set during registration to the unwrapped
+        metric function, but the decorator returns a ``functools.wraps``
+        wrapper as the module attribute. Pickle resolves functions by
+        ``__qualname__``, so it finds the wrapper at that name and refuses
+        to serialise the stored unwrapped function ("not the same object as
+        ...") -- which is the root cause of the long-standing panel
+        serialisation failure.
+
+        Instead, we pickle a MetricInfo as its name and re-resolve from the
+        global registry on unpickle. That's safe for any registered metric
+        (built-in or custom) as long as the registry is populated in the
+        unpickling process -- which it is for built-ins at import time.
+        Custom metrics must be re-registered with ``register_custom_metric``
+        before loading; otherwise unpickling raises a clear error
+        identifying which metric is missing.
+
+        Inline (per-panel) MetricInfo objects do not live in the registry
+        and cannot be pickled -- they raise a ``TypeError`` here, which is
+        the correct behavior: panels with inline functions have always been
+        flagged as non-JSON-serialisable, and pickling them would produce
+        objects that can't be loaded in a fresh process.
+        """
+        from spatialtissuepy.summary.registry import _resolve_metric_for_pickle
+
+        registered = _registry._metrics.get(self.name)
+        if registered is None:
+            raise TypeError(
+                f"MetricInfo {self.name!r} is not in the global registry "
+                "and cannot be pickled. Inline metrics added via "
+                "StatisticsPanel.add_custom_function() are per-panel only; "
+                "register them globally with register_custom_metric() "
+                "before saving the containing panel."
+            )
+        return (_resolve_metric_for_pickle, (self.name,))
+
 
 def _validate_metric_function(
     func: Callable,
@@ -867,6 +905,26 @@ def clear_custom_metrics() -> int:
 def get_metric(name: str) -> MetricInfo:
     """Get a metric from the global registry."""
     return _registry.get(name)
+
+
+def _resolve_metric_for_pickle(name: str) -> 'MetricInfo':
+    """Unpickle hook for MetricInfo: fetch the live registry entry by name.
+
+    Raises a descriptive error when the name is not registered in the
+    current process (e.g. a custom metric that was not re-registered
+    before loading a saved panel). Kept as a module-level function so
+    pickle can import it by qualname.
+    """
+    try:
+        return _registry.get(name)
+    except KeyError as exc:
+        raise RuntimeError(
+            f"Cannot unpickle MetricInfo {name!r}: no metric with that "
+            "name is registered in the current process. Built-in metrics "
+            "register automatically at import time; custom metrics must "
+            "be re-registered with register_custom_metric() before "
+            "loading a saved panel that references them."
+        ) from exc
 
 
 def list_metrics(

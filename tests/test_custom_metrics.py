@@ -337,7 +337,7 @@ class TestPanelIntegration:
         )
 
         result = panel.compute(small_tissue)
-        assert result['result'] == 200.0  # First one wins in dict update
+        assert result['result'] == 300.0  # Last one wins in dict update (results.update overwrites)
 
     def test_panel_has_inline_metrics_property(self, small_tissue):
         """Test panel.has_inline_metrics property."""
@@ -612,19 +612,12 @@ class TestEdgeCases:
     """Tests for edge cases and boundary conditions."""
 
     def test_empty_tissue(self):
-        """Test custom metric on empty tissue."""
+        """Test that SpatialTissueData correctly rejects empty coordinate arrays."""
+        from spatialtissuepy.core.validators import ValidationError
         coords = np.array([]).reshape(0, 2)
         types = np.array([])
-        empty_data = SpatialTissueData(coords, types)
-
-        @register_custom_metric(name='empty_safe')
-        def empty_safe(data: SpatialTissueData) -> Dict[str, float]:
-            if data.n_cells == 0:
-                return {'value': 0.0}
-            return {'value': float(data.n_cells)}
-
-        result = get_metric('empty_safe')(empty_data)
-        assert result['value'] == 0.0
+        with pytest.raises(ValidationError, match="Coordinates array is empty"):
+            SpatialTissueData(coords, types)
 
     def test_metric_returns_nan(self, small_tissue):
         """Test metric that returns NaN values."""

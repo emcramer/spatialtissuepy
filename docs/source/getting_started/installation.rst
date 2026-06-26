@@ -60,7 +60,7 @@ To install for development:
 .. code-block:: bash
 
     # Clone the repository
-    git clone https://github.com/yourusername/spatialtissuepy.git
+    git clone https://github.com/emcramer/spatialtissuepy.git
     cd spatialtissuepy
 
     # Create a virtual environment

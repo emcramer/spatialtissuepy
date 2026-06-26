@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.abspath('../..'))
 project = 'spatialtissuepy'
 copyright = f'{datetime.now().year}, spatialtissuepy developers'
 author = 'spatialtissuepy developers'
-release = '0.1.0'
-version = '0.1.0'
+release = '0.2.0'
+version = '0.2.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -119,7 +119,7 @@ html_theme_options = {
     'icon_links': [
         {
             'name': 'GitHub',
-            'url': 'https://github.com/yourusername/spatialtissuepy',
+            'url': 'https://github.com/emcramer/spatialtissuepy',
             'icon': 'fa-brands fa-github',
         },
         {
@@ -142,7 +142,7 @@ html_theme_options = {
 }
 
 html_context = {
-    'github_user': 'yourusername',
+    'github_user': 'emcramer',
     'github_repo': 'spatialtissuepy',
     'github_version': 'main',
     'doc_path': 'docs/source',

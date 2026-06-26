@@ -16,6 +16,7 @@ spatial tissue analysis.
    feature_extraction
    visualization
    abm_integration
+   mcp_integration
 
 
 Overview

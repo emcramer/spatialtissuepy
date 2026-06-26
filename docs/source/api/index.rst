@@ -18,6 +18,7 @@ automatically generated from the source code docstrings.
    summary
    synthetic
    viz
+   mcp
 
 
 Quick Reference

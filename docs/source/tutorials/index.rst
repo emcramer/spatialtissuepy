@@ -127,7 +127,7 @@ Running Tutorials Locally
 
    .. code-block:: bash
 
-       git clone https://github.com/yourusername/spatialtissuepy.git
+       git clone https://github.com/emcramer/spatialtissuepy.git
        cd spatialtissuepy
 
 2. Install dependencies:

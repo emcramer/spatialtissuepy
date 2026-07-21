@@ -5,13 +5,16 @@ This module registers LDA-derived metrics with the StatisticsPanel
 for standardized computation across samples.
 """
 
-from typing import Dict, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
+
 import numpy as np
 
 from spatialtissuepy.summary.registry import register_metric
 
 if TYPE_CHECKING:
     from spatialtissuepy.core import SpatialTissueData
+
+    from .spatial_lda import SpatialLDA
 
 
 # Store fitted models for reuse within a session
@@ -26,10 +29,10 @@ def _get_or_fit_model(
 ) -> 'SpatialLDA':
     """Get cached model or fit a new one."""
     from .spatial_lda import SpatialLDA
-    
+
     if cache_key in _model_cache:
         return _model_cache[cache_key]
-    
+
     model = SpatialLDA(
         n_topics=n_topics,
         neighborhood_radius=radius,
@@ -37,7 +40,7 @@ def _get_or_fit_model(
     )
     model.fit(data)
     _model_cache[cache_key] = model
-    
+
     return model
 
 
@@ -58,20 +61,20 @@ def _lda_topic_proportions(
 ) -> Dict[str, float]:
     """Compute topic proportions based on dominant assignment."""
     from .spatial_lda import SpatialLDA
-    
+
     model = SpatialLDA(
         n_topics=n_topics,
         neighborhood_radius=radius,
         random_state=42
     )
     model.fit(data)
-    
+
     dominant = model.predict(data)
-    
+
     result = {}
     for i in range(n_topics):
         result[f'topic_{i}_proportion'] = float(np.mean(dominant == i))
-    
+
     return result
 
 
@@ -87,18 +90,18 @@ def _lda_topic_entropy(
     radius: float = 50.0
 ) -> Dict[str, float]:
     """Compute mean topic assignment entropy."""
-    from .spatial_lda import SpatialLDA
     from .analysis import topic_assignment_uncertainty
-    
+    from .spatial_lda import SpatialLDA
+
     model = SpatialLDA(
         n_topics=n_topics,
         neighborhood_radius=radius,
         random_state=42
     )
     model.fit(data)
-    
+
     entropy = topic_assignment_uncertainty(model, data)
-    
+
     return {
         'lda_mean_entropy': float(np.mean(entropy)),
         'lda_max_entropy': float(np.max(entropy)),
@@ -118,17 +121,17 @@ def _lda_dominant_confidence(
 ) -> Dict[str, float]:
     """Compute mean confidence of dominant topic."""
     from .spatial_lda import SpatialLDA
-    
+
     model = SpatialLDA(
         n_topics=n_topics,
         neighborhood_radius=radius,
         random_state=42
     )
     model.fit(data)
-    
+
     weights = model.transform(data)
     confidence = np.max(weights, axis=1)
-    
+
     return {
         'lda_mean_confidence': float(np.mean(confidence)),
         'lda_min_confidence': float(np.min(confidence)),
@@ -151,18 +154,18 @@ def _lda_diversity(
     radius: float = 50.0
 ) -> Dict[str, float]:
     """Compute topic diversity."""
-    from .spatial_lda import SpatialLDA
     from .metrics import topic_diversity
-    
+    from .spatial_lda import SpatialLDA
+
     model = SpatialLDA(
         n_topics=n_topics,
         neighborhood_radius=radius,
         random_state=42
     )
     model.fit(data)
-    
+
     diversity = topic_diversity(model)
-    
+
     return {'lda_diversity': diversity}
 
 
@@ -178,18 +181,18 @@ def _lda_spatial_consistency(
     radius: float = 50.0
 ) -> Dict[str, float]:
     """Compute spatial consistency metrics."""
-    from .spatial_lda import SpatialLDA
     from .metrics import spatial_topic_consistency
-    
+    from .spatial_lda import SpatialLDA
+
     model = SpatialLDA(
         n_topics=n_topics,
         neighborhood_radius=radius,
         random_state=42
     )
     model.fit(data)
-    
+
     consistency = spatial_topic_consistency(model, data, radius)
-    
+
     return {
         'lda_agreement_rate': consistency['agreement_rate'],
         'lda_topic_autocorrelation': consistency['topic_autocorrelation'],
@@ -209,16 +212,16 @@ def _lda_perplexity(
 ) -> Dict[str, float]:
     """Compute model perplexity."""
     from .spatial_lda import SpatialLDA
-    
+
     model = SpatialLDA(
         n_topics=n_topics,
         neighborhood_radius=radius,
         random_state=42
     )
     model.fit(data)
-    
+
     perplexity = model.perplexity(data)
-    
+
     return {'lda_perplexity': perplexity}
 
 
@@ -239,23 +242,23 @@ def _lda_max_enrichment(
     radius: float = 50.0
 ) -> Dict[str, float]:
     """Compute max enrichment of a cell type across topics."""
-    from .spatial_lda import SpatialLDA
     from .analysis import topic_enrichment
-    
+    from .spatial_lda import SpatialLDA
+
     model = SpatialLDA(
         n_topics=n_topics,
         neighborhood_radius=radius,
         random_state=42
     )
     model.fit(data)
-    
+
     enrichment = topic_enrichment(model)
-    
+
     if cell_type in enrichment.columns:
         max_enrich = enrichment[cell_type].max()
     else:
         max_enrich = np.nan
-    
+
     return {f'lda_max_enrichment_{cell_type}': float(max_enrich)}
 
 
@@ -271,22 +274,22 @@ def _lda_topic_concentration(
     radius: float = 50.0
 ) -> Dict[str, float]:
     """Compute topic concentration indices."""
-    from .spatial_lda import SpatialLDA
     from .metrics import topic_concentration_index
-    
+    from .spatial_lda import SpatialLDA
+
     model = SpatialLDA(
         n_topics=n_topics,
         neighborhood_radius=radius,
         random_state=42
     )
     model.fit(data)
-    
+
     concentration = topic_concentration_index(model, data)
-    
+
     result = {}
     for topic_idx, conc in concentration.items():
         result[f'lda_topic_{topic_idx}_concentration'] = float(conc)
-    
+
     result['lda_mean_concentration'] = float(np.mean(list(concentration.values())))
-    
+
     return result

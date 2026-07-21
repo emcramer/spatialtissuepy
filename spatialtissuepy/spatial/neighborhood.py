@@ -19,12 +19,13 @@ References
 """
 
 from __future__ import annotations
-from typing import Optional, Tuple, Union, Dict, List, TYPE_CHECKING
+
 from enum import Enum
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+
 import numpy as np
-from scipy.spatial import cKDTree
-from scipy.sparse import csr_matrix, lil_matrix
 import pandas as pd
+from scipy.sparse import csr_matrix, lil_matrix
 
 if TYPE_CHECKING:
     from spatialtissuepy.core import SpatialTissueData
@@ -41,7 +42,7 @@ class NeighborhoodMethod(Enum):
 # -----------------------------------------------------------------------------
 
 def compute_neighborhoods(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'radius',
     radius: Optional[float] = None,
     k: Optional[int] = None,
@@ -75,20 +76,20 @@ def compute_neighborhoods(
     --------
     >>> # Radius-based neighborhoods
     >>> neighborhoods = compute_neighborhoods(data, method='radius', radius=30)
-    >>> 
+    >>>
     >>> # k-nearest neighbor neighborhoods
     >>> neighborhoods = compute_neighborhoods(data, method='knn', k=10)
     """
     tree = data.kdtree
     coords = data._coordinates
-    
+
     if method == 'radius':
         if radius is None:
             raise ValueError("radius required for method='radius'")
-        
+
         # Query all neighbors within radius
         indices_list = tree.query_ball_tree(tree, radius)
-        
+
         # Process results
         neighborhoods = []
         for i, neighbors in enumerate(indices_list):
@@ -96,33 +97,33 @@ def compute_neighborhoods(
             if not include_self:
                 neighbors = neighbors[neighbors != i]
             neighborhoods.append(neighbors)
-    
+
     elif method == 'knn':
         if k is None:
             raise ValueError("k required for method='knn'")
-        
+
         k_query = k if include_self else k + 1
         k_query = min(k_query, len(coords))
-        
+
         _, indices = tree.query(coords, k=k_query)
-        
+
         if k_query == 1:
             indices = indices.reshape(-1, 1)
-        
+
         neighborhoods = []
         for i, neighbors in enumerate(indices):
             if not include_self:
                 neighbors = neighbors[neighbors != i]
             neighborhoods.append(np.array(neighbors, dtype=int))
-    
+
     else:
         raise ValueError(f"Unknown method: {method}. Use 'radius' or 'knn'.")
-    
+
     return neighborhoods
 
 
 def neighborhood_counts(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     neighborhoods: List[np.ndarray]
 ) -> np.ndarray:
     """
@@ -151,23 +152,23 @@ def neighborhood_counts(
     cell_types = data._cell_types
     unique_types = data.cell_types_unique
     type_to_idx = {ct: i for i, ct in enumerate(unique_types)}
-    
+
     n_cells = data.n_cells
     n_types = len(unique_types)
-    
+
     counts = np.zeros((n_cells, n_types), dtype=int)
-    
+
     for i, neighbors in enumerate(neighborhoods):
         if len(neighbors) > 0:
             neighbor_types = cell_types[neighbors]
             for ct in neighbor_types:
                 counts[i, type_to_idx[ct]] += 1
-    
+
     return counts
 
 
 def neighborhood_composition(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     neighborhoods: Optional[List[np.ndarray]] = None,
     method: str = 'radius',
     radius: Optional[float] = None,
@@ -225,9 +226,9 @@ def neighborhood_composition(
         neighborhoods = compute_neighborhoods(
             data, method=method, radius=radius, k=k, include_self=include_self, **kwargs
         )
-    
+
     counts = neighborhood_counts(data, neighborhoods)
-    
+
     if include_self:
         # Add focal cell type to counts
         unique_types = data.cell_types_unique
@@ -235,21 +236,21 @@ def neighborhood_composition(
         for i in range(data.n_cells):
             ct = data._cell_types[i]
             counts[i, type_to_idx[ct]] += 1
-    
+
     if pseudocount > 0:
         counts = counts.astype(float) + pseudocount
-    
+
     if normalize:
         row_sums = counts.sum(axis=1, keepdims=True)
         # Avoid division by zero for cells with no neighbors
         row_sums = np.where(row_sums == 0, 1, row_sums)
         return counts / row_sums
-    
+
     return counts.astype(float)
 
 
 def window_composition(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     window_size: float,
     grid_step: Optional[float] = None,
     min_cells: int = 1
@@ -285,10 +286,10 @@ def window_composition(
     """
     if grid_step is None:
         grid_step = window_size / 2
-    
+
     bounds = data.bounds
     half_window = window_size / 2
-    
+
     # Generate grid of window centers
     x_centers = np.arange(
         bounds['x'][0] + half_window,
@@ -300,40 +301,40 @@ def window_composition(
         bounds['y'][1] - half_window + grid_step,
         grid_step
     )
-    
+
     xx, yy = np.meshgrid(x_centers, y_centers)
     grid_centers = np.column_stack([xx.ravel(), yy.ravel()])
-    
+
     # For each window, count cell types
     tree = data.kdtree
     unique_types = data.cell_types_unique
     type_to_idx = {ct: i for i, ct in enumerate(unique_types)}
     n_types = len(unique_types)
-    
+
     compositions = []
     valid_centers = []
-    
+
     for center in grid_centers:
         # Find cells in window (Chebyshev distance = infinity norm)
         # Use radius query with sqrt(2)*half_window for circumscribed circle
         # then filter to square window
         candidate_idx = tree.query_ball_point(center, half_window * np.sqrt(2))
-        
+
         # Filter to actual square window
         cell_coords = data._coordinates[candidate_idx]
         in_window = np.all(np.abs(cell_coords - center) <= half_window, axis=1)
         window_idx = np.array(candidate_idx)[in_window]
-        
+
         if len(window_idx) >= min_cells:
             counts = np.zeros(n_types)
             for idx in window_idx:
                 ct = data._cell_types[idx]
                 counts[type_to_idx[ct]] += 1
-            
+
             # Normalize to proportions
             compositions.append(counts / counts.sum())
             valid_centers.append(center)
-    
+
     return np.array(compositions), np.array(valid_centers)
 
 
@@ -342,7 +343,7 @@ def window_composition(
 # -----------------------------------------------------------------------------
 
 def adjacency_matrix(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'radius',
     radius: Optional[float] = None,
     k: Optional[int] = None,
@@ -376,23 +377,23 @@ def adjacency_matrix(
     --------
     >>> # Binary radius-based adjacency
     >>> adj = adjacency_matrix(data, method='radius', radius=30)
-    >>> 
+    >>>
     >>> # Distance-weighted k-NN adjacency
     >>> adj = adjacency_matrix(data, method='knn', k=10, weighted=True)
     """
     n_cells = data.n_cells
     coords = data._coordinates
     tree = data.kdtree
-    
+
     # Use lil_matrix for efficient construction
     adj = lil_matrix((n_cells, n_cells), dtype=float)
-    
+
     if method == 'radius':
         if radius is None:
             raise ValueError("radius required for method='radius'")
-        
+
         pairs = tree.query_pairs(radius, output_type='ndarray')
-        
+
         if weighted:
             for i, j in pairs:
                 dist = np.linalg.norm(coords[i] - coords[j])
@@ -403,18 +404,18 @@ def adjacency_matrix(
             for i, j in pairs:
                 adj[i, j] = 1.0
                 adj[j, i] = 1.0
-    
+
     elif method == 'knn':
         if k is None:
             raise ValueError("k required for method='knn'")
-        
+
         k_query = min(k + 1, n_cells)
         distances, indices = tree.query(coords, k=k_query)
-        
+
         if k_query == 1:
             distances = distances.reshape(-1, 1)
             indices = indices.reshape(-1, 1)
-        
+
         for i in range(n_cells):
             for j_idx in range(1, indices.shape[1]):  # Skip self (index 0)
                 j = indices[i, j_idx]
@@ -424,19 +425,19 @@ def adjacency_matrix(
                     adj[i, j] = w
                 else:
                     adj[i, j] = 1.0
-    
+
     else:
         raise ValueError(f"Unknown method: {method}")
-    
+
     adj = adj.tocsr()
-    
+
     if sparse:
         return adj
     return adj.toarray()
 
 
 def type_adjacency_matrix(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'radius',
     radius: Optional[float] = None,
     k: Optional[int] = None,
@@ -477,21 +478,21 @@ def type_adjacency_matrix(
     neighborhoods = compute_neighborhoods(
         data, method=method, radius=radius, k=k
     )
-    
+
     cell_types = data._cell_types
     unique_types = list(data.cell_types_unique)
     n_types = len(unique_types)
     type_to_idx = {ct: i for i, ct in enumerate(unique_types)}
-    
+
     # Count type-type edges
     counts = np.zeros((n_types, n_types), dtype=float)
-    
+
     for i, neighbors in enumerate(neighborhoods):
         type_i = type_to_idx[cell_types[i]]
         for j in neighbors:
             type_j = type_to_idx[cell_types[j]]
             counts[type_i, type_j] += 1
-    
+
     # Normalize if requested
     if normalize == 'row':
         row_sums = counts.sum(axis=1, keepdims=True)
@@ -508,12 +509,12 @@ def type_adjacency_matrix(
         ])
         n_total = data.n_cells
         total_edges = counts.sum()
-        
+
         expected = np.outer(type_counts, type_counts) / (n_total ** 2) * total_edges
         counts = counts / np.where(expected > 0, expected, 1)
     elif normalize != 'none':
         raise ValueError(f"Unknown normalize: {normalize}")
-    
+
     return pd.DataFrame(counts, index=unique_types, columns=unique_types)
 
 
@@ -541,7 +542,7 @@ def neighborhood_size(
 
 
 def neighborhood_diversity(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     neighborhoods: List[np.ndarray],
     metric: str = 'shannon'
 ) -> np.ndarray:
@@ -571,30 +572,30 @@ def neighborhood_diversity(
     composition = neighborhood_composition(
         data, neighborhoods=neighborhoods, normalize=True
     )
-    
+
     if metric == 'shannon':
         # Shannon entropy
         with np.errstate(divide='ignore', invalid='ignore'):
             log_p = np.log(composition)
             log_p = np.where(np.isfinite(log_p), log_p, 0)
         diversity = -np.sum(composition * log_p, axis=1)
-    
+
     elif metric == 'simpson':
         # Simpson's diversity index (1 - dominance)
         diversity = 1 - np.sum(composition ** 2, axis=1)
-    
+
     elif metric == 'richness':
         # Number of types present
         diversity = np.sum(composition > 0, axis=1).astype(float)
-    
+
     else:
         raise ValueError(f"Unknown metric: {metric}")
-    
+
     return diversity
 
 
 def neighborhood_enrichment(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     neighborhoods: List[np.ndarray],
     target_type: str
 ) -> np.ndarray:
@@ -620,24 +621,24 @@ def neighborhood_enrichment(
     composition = neighborhood_composition(
         data, neighborhoods=neighborhoods, normalize=True
     )
-    
+
     # Get column index for target type
     unique_types = list(data.cell_types_unique)
     if target_type not in unique_types:
         raise ValueError(f"Unknown cell type: {target_type}")
-    
+
     type_idx = unique_types.index(target_type)
     observed = composition[:, type_idx]
-    
+
     # Expected proportion (global)
     expected = np.sum(data._cell_types == target_type) / data.n_cells
-    
+
     # Enrichment = observed / expected
     return observed / max(expected, 1e-10)
 
 
 def interface_cells(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     type_a: str,
     type_b: str,
     radius: float,
@@ -673,28 +674,27 @@ def interface_cells(
     ... )
     """
     neighborhoods = compute_neighborhoods(data, method='radius', radius=radius)
-    cell_types = data._cell_types
-    
+
     idx_a = data.get_cells_by_type(type_a)
     idx_b = data.get_cells_by_type(type_b)
-    
+
     idx_b_set = set(idx_b)
     idx_a_set = set(idx_a)
-    
+
     # Type A cells with >= min_neighbors of type B
     type_a_interface = []
     for i in idx_a:
         n_type_b = sum(1 for j in neighborhoods[i] if j in idx_b_set)
         if n_type_b >= min_neighbors:
             type_a_interface.append(i)
-    
+
     # Type B cells with >= min_neighbors of type A
     type_b_interface = []
     for i in idx_b:
         n_type_a = sum(1 for j in neighborhoods[i] if j in idx_a_set)
         if n_type_a >= min_neighbors:
             type_b_interface.append(i)
-    
+
     return np.array(type_a_interface), np.array(type_b_interface)
 
 
@@ -703,7 +703,7 @@ def interface_cells(
 # -----------------------------------------------------------------------------
 
 def neighborhood_to_dataframe(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     neighborhoods: Optional[List[np.ndarray]] = None,
     method: str = 'radius',
     radius: Optional[float] = None,
@@ -729,15 +729,15 @@ def neighborhood_to_dataframe(
     composition = neighborhood_composition(
         data, neighborhoods=neighborhoods, method=method, radius=radius, k=k
     )
-    
+
     df = pd.DataFrame(
         composition,
         columns=data.cell_types_unique
     )
-    
+
     # Add metadata columns
     df['cell_type'] = data._cell_types
     if data._sample_ids is not None:
         df['sample_id'] = data._sample_ids
-    
+
     return df

@@ -24,31 +24,34 @@ Example
 """
 
 from __future__ import annotations
-from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, List, Optional, 
-    Tuple, Union
-)
+
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+
 import numpy as np
 from scipy.spatial import cKDTree
 
-from .cover import Cover, UniformCover, AdaptiveCover, create_cover
+from .cover import Cover, create_cover
+from .filters import FilterFunction, density_filter, pca_filter
 from .nerve import (
-    MapperNode, MapperEdge, build_nerve, 
-    nodes_edges_to_networkx, compute_graph_statistics
+    MapperEdge,
+    MapperNode,
+    build_nerve,
+    compute_graph_statistics,
+    nodes_edges_to_networkx,
 )
-from .filters import density_filter, pca_filter, FilterFunction
 
 if TYPE_CHECKING:
-    from spatialtissuepy.core.spatial_data import SpatialTissueData
     import networkx as nx
+
+    from spatialtissuepy.core.spatial_data import SpatialTissueData
 
 
 @dataclass
 class MapperResult:
     """
     Container for Mapper algorithm results.
-    
+
     Attributes
     ----------
     graph : nx.Graph
@@ -66,28 +69,28 @@ class MapperResult:
     parameters : dict
         Parameters used for this Mapper run.
     """
-    graph: 'nx.Graph'
+    graph: nx.Graph
     nodes: List[MapperNode]
     edges: List[MapperEdge]
     filter_values: np.ndarray
     cell_node_map: Dict[int, List[int]]
     cover: Cover
     parameters: Dict[str, Any]
-    
+
     # Cached statistics
     _statistics: Optional[Dict[str, Any]] = field(default=None, repr=False)
     _node_compositions: Optional[Dict[int, Dict[str, int]]] = field(default=None, repr=False)
-    
+
     @property
     def n_nodes(self) -> int:
         """Number of nodes in the Mapper graph."""
         return len(self.nodes)
-    
+
     @property
     def n_edges(self) -> int:
         """Number of edges in the Mapper graph."""
         return len(self.edges)
-    
+
     @property
     def n_components(self) -> int:
         """Number of connected components."""
@@ -97,30 +100,30 @@ class MapperResult:
         except ImportError:
             # Count manually from nodes/edges
             return self._count_components_manual()
-    
+
     def _count_components_manual(self) -> int:
         """Count connected components without networkx."""
         if len(self.nodes) == 0:
             return 0
-        
+
         # Union-find
         parent = {n.node_id: n.node_id for n in self.nodes}
-        
+
         def find(x):
             if parent[x] != x:
                 parent[x] = find(parent[x])
             return parent[x]
-        
+
         def union(x, y):
             px, py = find(x), find(y)
             if px != py:
                 parent[px] = py
-        
+
         for edge in self.edges:
             union(edge.source, edge.target)
-        
+
         return len(set(find(n.node_id) for n in self.nodes))
-    
+
     @property
     def statistics(self) -> Dict[str, Any]:
         """Compute and cache graph statistics."""
@@ -134,7 +137,7 @@ class MapperResult:
                     'n_connected_components': self.n_components,
                 }
         return self._statistics
-    
+
     @property
     def node_compositions(self) -> Dict[int, Dict[str, int]]:
         """Cell type composition of each node."""
@@ -145,21 +148,21 @@ class MapperResult:
                     comp = self.graph.nodes[node.node_id].get('composition', {})
                     self._node_compositions[node.node_id] = comp
         return self._node_compositions
-    
+
     @property
     def node_spatial_centroids(self) -> Dict[int, np.ndarray]:
         """Spatial centroids of each node."""
         return {node.node_id: node.spatial_centroid for node in self.nodes}
-    
+
     def get_node_members(self, node_id: int) -> np.ndarray:
         """
         Get cell indices belonging to a specific node.
-        
+
         Parameters
         ----------
         node_id : int
             Node identifier.
-        
+
         Returns
         -------
         np.ndarray
@@ -169,16 +172,16 @@ class MapperResult:
             if node.node_id == node_id:
                 return node.members.copy()
         raise ValueError(f"Node {node_id} not found")
-    
+
     def get_cells_by_component(self, component_id: int = 0) -> np.ndarray:
         """
         Get all cells in a connected component.
-        
+
         Parameters
         ----------
         component_id : int, default 0
             Component index (0 is largest component).
-        
+
         Returns
         -------
         np.ndarray
@@ -189,25 +192,25 @@ class MapperResult:
             components = list(nx.connected_components(self.graph))
             # Sort by size (descending)
             components = sorted(components, key=len, reverse=True)
-            
+
             if component_id >= len(components):
                 raise ValueError(f"Component {component_id} not found (only {len(components)} components)")
-            
+
             component_nodes = components[component_id]
             cells = []
             for node_id in component_nodes:
                 cells.extend(self.get_node_members(node_id))
-            
+
             return np.unique(cells)
         except ImportError:
             raise ImportError("networkx required for get_cells_by_component")
-    
+
     def __repr__(self) -> str:
         return (
             f"MapperResult(n_nodes={self.n_nodes}, n_edges={self.n_edges}, "
             f"n_components={self.n_components})"
         )
-    
+
     def __str__(self) -> str:
         lines = [
             "MapperResult",
@@ -215,7 +218,7 @@ class MapperResult:
             f"  Edges: {self.n_edges}",
             f"  Connected components: {self.n_components}",
         ]
-        
+
         stats = self.statistics
         if 'mean_degree' in stats:
             lines.append(f"  Mean node degree: {stats['mean_degree']:.2f}")
@@ -223,17 +226,17 @@ class MapperResult:
             lines.append(f"  Mean node size: {stats['mean_node_size']:.1f} cells")
         if 'total_cells_in_nodes' in stats:
             lines.append(f"  Total cells in graph: {stats['total_cells_in_nodes']}")
-        
+
         return "\n".join(lines)
 
 
 class SpatialMapper:
     """
     Spatial Mapper algorithm for cell community discovery.
-    
+
     Implements the Mapper algorithm from topological data analysis with
     spatial-aware filter functions designed for tissue biology.
-    
+
     Parameters
     ----------
     filter_fn : str, callable, or FilterFunction
@@ -255,7 +258,7 @@ class SpatialMapper:
         Minimum cells to form a cluster.
     min_edge_weight : int, default 1
         Minimum overlap to create an edge.
-    
+
     Examples
     --------
     >>> mapper = SpatialMapper(
@@ -264,7 +267,7 @@ class SpatialMapper:
     ...     overlap=0.5,
     ... )
     >>> result = mapper.fit(data, neighborhood_radius=50)
-    
+
     >>> # With spatial filter
     >>> from spatialtissuepy.topology.spatial_filters import radial_filter
     >>> mapper = SpatialMapper(
@@ -274,7 +277,7 @@ class SpatialMapper:
     ... )
     >>> result = mapper.fit(data, neighborhood_radius=50)
     """
-    
+
     def __init__(
         self,
         filter_fn: Union[str, FilterFunction] = 'density',
@@ -294,10 +297,10 @@ class SpatialMapper:
         self.clustering_params = clustering_params or {}
         self.min_cluster_size = min_cluster_size
         self.min_edge_weight = min_edge_weight
-        
+
         # Resolve string filter to function
         self._filter_fn = self._resolve_filter(filter_fn)
-    
+
     def _resolve_filter(
         self,
         filter_fn: Union[str, FilterFunction]
@@ -305,29 +308,29 @@ class SpatialMapper:
         """Resolve filter string to function."""
         if callable(filter_fn):
             return filter_fn
-        
+
         filter_map = {
             'density': density_filter(),
             'pca': pca_filter(n_components=1),
         }
-        
+
         if filter_fn in filter_map:
             return filter_map[filter_fn]
-        
+
         raise ValueError(
             f"Unknown filter: {filter_fn}. "
             f"Options: {list(filter_map.keys())} or provide a callable."
         )
-    
+
     def fit(
         self,
-        data: 'SpatialTissueData',
+        data: SpatialTissueData,
         neighborhood_radius: float = 50.0,
         features: Optional[np.ndarray] = None,
     ) -> MapperResult:
         """
         Fit Mapper to spatial tissue data.
-        
+
         Parameters
         ----------
         data : SpatialTissueData
@@ -337,7 +340,7 @@ class SpatialMapper:
         features : np.ndarray, optional
             Precomputed feature matrix. If None, computes neighborhood
             composition matrix.
-        
+
         Returns
         -------
         MapperResult
@@ -345,16 +348,16 @@ class SpatialMapper:
         """
         coordinates = data._coordinates
         cell_types = data._cell_types
-        
+
         # Compute neighborhood composition matrix if not provided
         if features is None:
             features = self._compute_neighborhood_matrix(
                 data, radius=neighborhood_radius
             )
-        
+
         # Compute filter values
         filter_values = self._filter_fn(coordinates, features, data)
-        
+
         # Create and fit cover
         cover = create_cover(
             cover_type=self.cover_type,
@@ -362,10 +365,10 @@ class SpatialMapper:
             overlap_fraction=self.overlap
         )
         cover.fit(filter_values)
-        
+
         # Get cover element members
         cover_members = cover.get_element_members(filter_values)
-        
+
         # Build nerve (cluster and connect)
         nodes, edges = build_nerve(
             cover_element_members=cover_members,
@@ -376,14 +379,14 @@ class SpatialMapper:
             min_edge_weight=self.min_edge_weight,
             **self.clustering_params
         )
-        
+
         # Convert to NetworkX graph
         try:
             graph = nodes_edges_to_networkx(nodes, edges, cell_types)
         except ImportError:
             # Create minimal graph placeholder
             graph = None
-        
+
         # Build cell-to-node mapping
         cell_node_map: Dict[int, List[int]] = {}
         for node in nodes:
@@ -391,7 +394,7 @@ class SpatialMapper:
                 if cell_idx not in cell_node_map:
                     cell_node_map[cell_idx] = []
                 cell_node_map[cell_idx].append(node.node_id)
-        
+
         # Store parameters
         parameters = {
             'filter_fn': str(self.filter_fn),
@@ -404,7 +407,7 @@ class SpatialMapper:
             'min_edge_weight': self.min_edge_weight,
             'neighborhood_radius': neighborhood_radius,
         }
-        
+
         return MapperResult(
             graph=graph,
             nodes=nodes,
@@ -414,24 +417,24 @@ class SpatialMapper:
             cover=cover,
             parameters=parameters,
         )
-    
+
     def _compute_neighborhood_matrix(
         self,
-        data: 'SpatialTissueData',
+        data: SpatialTissueData,
         radius: float
     ) -> np.ndarray:
         """
         Compute neighborhood composition matrix.
-        
+
         For each cell, counts the number of each cell type within radius.
-        
+
         Parameters
         ----------
         data : SpatialTissueData
             Input data.
         radius : float
             Neighborhood radius.
-        
+
         Returns
         -------
         np.ndarray
@@ -441,33 +444,33 @@ class SpatialMapper:
         cell_types = data._cell_types
         unique_types = data.cell_types_unique
         type_to_idx = {t: i for i, t in enumerate(unique_types)}
-        
+
         n_cells = len(coordinates)
         n_types = len(unique_types)
-        
+
         # Build KD-tree
         tree = cKDTree(coordinates)
-        
+
         # Compute neighborhoods
         neighborhoods = np.zeros((n_cells, n_types), dtype=float)
-        
+
         for i, coord in enumerate(coordinates):
             # Find neighbors within radius
             neighbor_idx = tree.query_ball_point(coord, radius)
-            
+
             # Count cell types (excluding self)
             for j in neighbor_idx:
                 if j != i:
                     type_idx = type_to_idx[cell_types[j]]
                     neighborhoods[i, type_idx] += 1
-        
+
         # Normalize rows (optional: convert to proportions)
         row_sums = neighborhoods.sum(axis=1, keepdims=True)
         row_sums[row_sums == 0] = 1  # Avoid division by zero
         neighborhoods = neighborhoods / row_sums
-        
+
         return neighborhoods
-    
+
     def __repr__(self) -> str:
         return (
             f"SpatialMapper(filter_fn={self.filter_fn!r}, "
@@ -476,7 +479,7 @@ class SpatialMapper:
 
 
 def spatial_mapper(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     filter_fn: Union[str, FilterFunction] = 'density',
     neighborhood_radius: float = 50.0,
     n_intervals: int = 10,
@@ -487,7 +490,7 @@ def spatial_mapper(
 ) -> MapperResult:
     """
     Convenience function to run Spatial Mapper.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
@@ -506,12 +509,12 @@ def spatial_mapper(
         Clustering parameters.
     min_cluster_size : int, default 3
         Minimum cluster size.
-    
+
     Returns
     -------
     MapperResult
         Mapper results.
-    
+
     Examples
     --------
     >>> result = spatial_mapper(data, filter_fn='density', n_intervals=10)

@@ -6,12 +6,15 @@ as well as shortest path statistics.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Any
+
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
+
 import numpy as np
 
 if TYPE_CHECKING:
-    from .cell_graph import CellGraph
     import networkx as nx
+
+    from .cell_graph import CellGraph
 
 try:
     import networkx as nx
@@ -20,7 +23,7 @@ except ImportError:
     HAS_NETWORKX = False
 
 
-def _get_nx_graph(graph: Union['CellGraph', 'nx.Graph']) -> 'nx.Graph':
+def _get_nx_graph(graph: Union[CellGraph, nx.Graph]) -> nx.Graph:
     """Helper to extract NetworkX graph from CellGraph or return nx.Graph."""
     if hasattr(graph, 'G'):
         return graph.G
@@ -31,23 +34,23 @@ def _get_nx_graph(graph: Union['CellGraph', 'nx.Graph']) -> 'nx.Graph':
 # Communicability
 # ============================================================================
 
-def communicability(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, Dict[int, float]]:
+def communicability(graph: Union[CellGraph, nx.Graph]) -> Dict[int, Dict[int, float]]:
     """
     Compute communicability between all pairs of nodes.
-    
+
     Communicability measures the sum of all walks of different lengths
     between two nodes, weighted by the inverse factorial of the length.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     dict of dict
         Nested dict: comm[i][j] = communicability between nodes i and j.
-    
+
     Notes
     -----
     This can be memory-intensive for large graphs.
@@ -55,17 +58,17 @@ def communicability(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, Dict[int
     return nx.communicability(_get_nx_graph(graph))
 
 
-def communicability_exp(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, Dict[int, float]]:
+def communicability_exp(graph: Union[CellGraph, nx.Graph]) -> Dict[int, Dict[int, float]]:
     """
     Compute communicability using matrix exponential.
-    
+
     More efficient implementation using spectral decomposition.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     dict of dict
@@ -74,18 +77,18 @@ def communicability_exp(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, Dict
     return nx.communicability_exp(_get_nx_graph(graph))
 
 
-def communicability_betweenness(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
+def communicability_betweenness(graph: Union[CellGraph, nx.Graph]) -> Dict[int, float]:
     """
     Compute communicability betweenness centrality.
-    
+
     This measures how much a node contributes to the communicability
     between all pairs of other nodes.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     dict
@@ -95,7 +98,7 @@ def communicability_betweenness(graph: Union['CellGraph', 'nx.Graph']) -> Dict[i
 
 
 def communicability_between_types(
-    graph: 'CellGraph',
+    graph: CellGraph,
     type_a: str,
     type_b: str,
     sample_size: Optional[int] = None,
@@ -103,7 +106,7 @@ def communicability_between_types(
 ) -> Dict[str, float]:
     """
     Compute communicability statistics between two cell types.
-    
+
     Parameters
     ----------
     graph : CellGraph
@@ -116,12 +119,12 @@ def communicability_between_types(
         If specified, sample this many pairs to reduce computation.
     seed : int, optional
         Random seed for sampling.
-    
+
     Returns
     -------
     dict
         Statistics: 'mean', 'std', 'median', 'min', 'max', 'n_pairs'.
-    
+
     Examples
     --------
     >>> comm = communicability_between_types(graph, 'T_cell', 'Tumor')
@@ -129,7 +132,7 @@ def communicability_between_types(
     """
     nodes_a = graph.get_nodes_by_type(type_a)
     nodes_b = graph.get_nodes_by_type(type_b)
-    
+
     if len(nodes_a) == 0 or len(nodes_b) == 0:
         return {
             'mean': np.nan,
@@ -139,14 +142,14 @@ def communicability_between_types(
             'max': np.nan,
             'n_pairs': 0,
         }
-    
+
     # Get communicability matrix
     comm = communicability_exp(graph)
-    
+
     # Sample pairs if needed
     if sample_size is not None:
         rng = np.random.default_rng(seed)
-        
+
         n_possible = len(nodes_a) * len(nodes_b)
         if sample_size < n_possible:
             # Sample pairs
@@ -157,15 +160,15 @@ def communicability_between_types(
             pairs = [(a, b) for a in nodes_a for b in nodes_b]
     else:
         pairs = [(a, b) for a in nodes_a for b in nodes_b]
-    
+
     # Collect communicability values
     values = []
     for a, b in pairs:
         if a in comm and b in comm[a]:
             values.append(comm[a][b])
-    
+
     values = np.array(values)
-    
+
     if len(values) == 0:
         return {
             'mean': np.nan,
@@ -175,7 +178,7 @@ def communicability_between_types(
             'max': np.nan,
             'n_pairs': 0,
         }
-    
+
     return {
         'mean': float(np.mean(values)),
         'std': float(np.std(values)),
@@ -187,13 +190,13 @@ def communicability_between_types(
 
 
 def communicability_matrix_by_type(
-    graph: 'CellGraph',
+    graph: CellGraph,
     sample_size: Optional[int] = None,
     seed: Optional[int] = None,
 ) -> Dict[Tuple[str, str], float]:
     """
     Compute mean communicability for all cell type pairs.
-    
+
     Parameters
     ----------
     graph : CellGraph
@@ -202,16 +205,16 @@ def communicability_matrix_by_type(
         Sample size per pair for large graphs.
     seed : int, optional
         Random seed.
-    
+
     Returns
     -------
     dict
         (type_a, type_b) to mean communicability.
     """
     cell_types = graph.cell_types_unique
-    
+
     result = {}
-    
+
     for i, type_a in enumerate(cell_types):
         for type_b in cell_types[i:]:  # Upper triangle including diagonal
             stats = communicability_between_types(
@@ -221,7 +224,7 @@ def communicability_matrix_by_type(
             result[(type_a, type_b)] = stats['mean']
             if type_a != type_b:
                 result[(type_b, type_a)] = stats['mean']  # Symmetric
-    
+
     return result
 
 
@@ -230,7 +233,7 @@ def communicability_matrix_by_type(
 # ============================================================================
 
 def shortest_path_length_between_types(
-    graph: 'CellGraph',
+    graph: CellGraph,
     type_a: str,
     type_b: str,
     sample_size: Optional[int] = None,
@@ -238,7 +241,7 @@ def shortest_path_length_between_types(
 ) -> Dict[str, float]:
     """
     Compute shortest path length statistics between two cell types.
-    
+
     Parameters
     ----------
     graph : CellGraph
@@ -251,7 +254,7 @@ def shortest_path_length_between_types(
         Number of pairs to sample.
     seed : int, optional
         Random seed.
-    
+
     Returns
     -------
     dict
@@ -259,7 +262,7 @@ def shortest_path_length_between_types(
     """
     nodes_a = graph.get_nodes_by_type(type_a)
     nodes_b = graph.get_nodes_by_type(type_b)
-    
+
     if len(nodes_a) == 0 or len(nodes_b) == 0:
         return {
             'mean': np.nan,
@@ -270,11 +273,11 @@ def shortest_path_length_between_types(
             'n_pairs': 0,
             'n_unreachable': 0,
         }
-    
+
     # Sample pairs if needed
     if sample_size is not None:
         rng = np.random.default_rng(seed)
-        
+
         n_possible = len(nodes_a) * len(nodes_b)
         if sample_size < n_possible:
             pairs_a = rng.choice(nodes_a, size=sample_size, replace=True)
@@ -284,20 +287,20 @@ def shortest_path_length_between_types(
             pairs = [(a, b) for a in nodes_a for b in nodes_b]
     else:
         pairs = [(a, b) for a in nodes_a for b in nodes_b]
-    
+
     # Compute shortest paths
     lengths = []
     n_unreachable = 0
-    
+
     for a, b in pairs:
         try:
             length = nx.shortest_path_length(graph.G, source=a, target=b)
             lengths.append(length)
         except nx.NetworkXNoPath:
             n_unreachable += 1
-    
+
     lengths = np.array(lengths)
-    
+
     if len(lengths) == 0:
         return {
             'mean': np.nan,
@@ -308,7 +311,7 @@ def shortest_path_length_between_types(
             'n_pairs': len(pairs),
             'n_unreachable': n_unreachable,
         }
-    
+
     return {
         'mean': float(np.mean(lengths)),
         'std': float(np.std(lengths)),
@@ -320,15 +323,15 @@ def shortest_path_length_between_types(
     }
 
 
-def average_shortest_path_length(graph: Union['CellGraph', 'nx.Graph']) -> float:
+def average_shortest_path_length(graph: Union[CellGraph, nx.Graph]) -> float:
     """
     Compute average shortest path length for the graph.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     float
@@ -341,19 +344,19 @@ def average_shortest_path_length(graph: Union['CellGraph', 'nx.Graph']) -> float
         largest_cc = max(nx.connected_components(G), key=len)
         subG = G.subgraph(largest_cc)
         return nx.average_shortest_path_length(subG)
-    
+
     return nx.average_shortest_path_length(G)
 
 
-def diameter(graph: Union['CellGraph', 'nx.Graph']) -> int:
+def diameter(graph: Union[CellGraph, nx.Graph]) -> int:
     """
     Compute graph diameter (maximum eccentricity).
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     int
@@ -364,19 +367,19 @@ def diameter(graph: Union['CellGraph', 'nx.Graph']) -> int:
         largest_cc = max(nx.connected_components(G), key=len)
         subG = G.subgraph(largest_cc)
         return nx.diameter(subG)
-    
+
     return nx.diameter(G)
 
 
-def radius(graph: Union['CellGraph', 'nx.Graph']) -> int:
+def radius(graph: Union[CellGraph, nx.Graph]) -> int:
     """
     Compute graph radius (minimum eccentricity).
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     int
@@ -387,21 +390,21 @@ def radius(graph: Union['CellGraph', 'nx.Graph']) -> int:
         largest_cc = max(nx.connected_components(G), key=len)
         subG = G.subgraph(largest_cc)
         return nx.radius(subG)
-    
+
     return nx.radius(G)
 
 
-def eccentricity(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, int]:
+def eccentricity(graph: Union[CellGraph, nx.Graph]) -> Dict[int, int]:
     """
     Compute eccentricity for all nodes.
-    
+
     Eccentricity is the maximum distance from a node to any other.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     dict
@@ -413,12 +416,12 @@ def eccentricity(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, int]:
         largest_cc = max(nx.connected_components(G), key=len)
         subG = G.subgraph(largest_cc)
         ecc = nx.eccentricity(subG)
-        
+
         # Fill in inf for disconnected nodes
         result = {n: np.inf for n in G.nodes()}
         result.update(ecc)
         return result
-    
+
     return nx.eccentricity(G)
 
 
@@ -426,18 +429,18 @@ def eccentricity(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, int]:
 # Efficiency Metrics
 # ============================================================================
 
-def global_efficiency(graph: Union['CellGraph', 'nx.Graph']) -> float:
+def global_efficiency(graph: Union[CellGraph, nx.Graph]) -> float:
     """
     Compute global efficiency of the graph.
-    
+
     Global efficiency is the average inverse shortest path length.
     Higher efficiency means better "communication" in the network.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     float
@@ -446,17 +449,17 @@ def global_efficiency(graph: Union['CellGraph', 'nx.Graph']) -> float:
     return nx.global_efficiency(_get_nx_graph(graph))
 
 
-def local_efficiency(graph: Union['CellGraph', 'nx.Graph']) -> float:
+def local_efficiency(graph: Union[CellGraph, nx.Graph]) -> float:
     """
     Compute local efficiency of the graph.
-    
+
     Local efficiency is the average efficiency of node neighborhoods.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     float
@@ -465,15 +468,15 @@ def local_efficiency(graph: Union['CellGraph', 'nx.Graph']) -> float:
     return nx.local_efficiency(_get_nx_graph(graph))
 
 
-def nodal_efficiency(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
+def nodal_efficiency(graph: Union[CellGraph, nx.Graph]) -> Dict[int, float]:
     """
     Compute local efficiency for each node.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     dict
@@ -482,16 +485,16 @@ def nodal_efficiency(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
     # NetworkX doesn't have per-node local efficiency, so compute manually
     result = {}
     G = _get_nx_graph(graph)
-    
+
     for node in G.nodes():
         neighbors = list(G.neighbors(node))
-        
+
         if len(neighbors) < 2:
             result[node] = 0.0
             continue
-        
+
         # Subgraph of neighbors
         subG = G.subgraph(neighbors)
         result[node] = nx.global_efficiency(subG)
-    
+
     return result

@@ -6,14 +6,15 @@ them by cell type.
 """
 
 from __future__ import annotations
-from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
-)
+
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+
 import numpy as np
 
 if TYPE_CHECKING:
-    from .cell_graph import CellGraph
     import networkx as nx
+
+    from .cell_graph import CellGraph
 
 try:
     import networkx as nx
@@ -22,7 +23,7 @@ except ImportError:
     HAS_NETWORKX = False
 
 
-def _get_nx_graph(graph: Union['CellGraph', 'nx.Graph']) -> 'nx.Graph':
+def _get_nx_graph(graph: Union[CellGraph, nx.Graph]) -> nx.Graph:
     """Helper to extract NetworkX graph from CellGraph or return nx.Graph."""
     if hasattr(graph, 'G'):
         return graph.G
@@ -33,17 +34,17 @@ def _get_nx_graph(graph: Union['CellGraph', 'nx.Graph']) -> 'nx.Graph':
 # Core Centrality Functions
 # ============================================================================
 
-def degree_centrality(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
+def degree_centrality(graph: Union[CellGraph, nx.Graph]) -> Dict[int, float]:
     """
     Compute degree centrality for all nodes.
-    
+
     Degree centrality is the fraction of nodes a node is connected to.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     dict
@@ -53,17 +54,17 @@ def degree_centrality(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]
 
 
 def betweenness_centrality(
-    graph: Union['CellGraph', 'nx.Graph'],
+    graph: Union[CellGraph, nx.Graph],
     k: Optional[int] = None,
     normalized: bool = True,
     seed: Optional[int] = None,
 ) -> Dict[int, float]:
     """
     Compute betweenness centrality for all nodes.
-    
+
     Betweenness centrality measures how often a node lies on shortest
     paths between other nodes. High betweenness indicates "bridge" cells.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
@@ -75,7 +76,7 @@ def betweenness_centrality(
         Normalize by 2/((n-1)(n-2)) for undirected graphs.
     seed : int, optional
         Random seed for sampling (if k is specified).
-    
+
     Returns
     -------
     dict
@@ -87,21 +88,21 @@ def betweenness_centrality(
 
 
 def closeness_centrality(
-    graph: Union['CellGraph', 'nx.Graph'],
+    graph: Union[CellGraph, nx.Graph],
     wf_improved: bool = True,
 ) -> Dict[int, float]:
     """
     Compute closeness centrality for all nodes.
-    
+
     Closeness centrality measures how close a node is to all other nodes.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
     wf_improved : bool, default True
         Use Wasserman-Faust improved formula for disconnected graphs.
-    
+
     Returns
     -------
     dict
@@ -111,16 +112,16 @@ def closeness_centrality(
 
 
 def eigenvector_centrality(
-    graph: Union['CellGraph', 'nx.Graph'],
+    graph: Union[CellGraph, nx.Graph],
     max_iter: int = 100,
     tol: float = 1e-6,
 ) -> Dict[int, float]:
     """
     Compute eigenvector centrality for all nodes.
-    
+
     A node has high eigenvector centrality if it is connected to other
     nodes that themselves have high centrality.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
@@ -129,7 +130,7 @@ def eigenvector_centrality(
         Maximum iterations for power method.
     tol : float, default 1e-6
         Convergence tolerance.
-    
+
     Returns
     -------
     dict
@@ -144,15 +145,15 @@ def eigenvector_centrality(
 
 
 def pagerank(
-    graph: Union['CellGraph', 'nx.Graph'],
+    graph: Union[CellGraph, nx.Graph],
     alpha: float = 0.85,
     max_iter: int = 100,
 ) -> Dict[int, float]:
     """
     Compute PageRank centrality for all nodes.
-    
+
     PageRank is a variant of eigenvector centrality with damping.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
@@ -161,7 +162,7 @@ def pagerank(
         Damping factor.
     max_iter : int, default 100
         Maximum iterations.
-    
+
     Returns
     -------
     dict
@@ -170,18 +171,18 @@ def pagerank(
     return nx.pagerank(_get_nx_graph(graph), alpha=alpha, max_iter=max_iter)
 
 
-def harmonic_centrality(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
+def harmonic_centrality(graph: Union[CellGraph, nx.Graph]) -> Dict[int, float]:
     """
     Compute harmonic centrality for all nodes.
-    
+
     Harmonic centrality is the sum of reciprocal distances, which handles
     disconnected components better than closeness centrality.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     dict
@@ -191,16 +192,16 @@ def harmonic_centrality(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, floa
 
 
 def katz_centrality(
-    graph: Union['CellGraph', 'nx.Graph'],
+    graph: Union[CellGraph, nx.Graph],
     alpha: float = 0.1,
     beta: float = 1.0,
 ) -> Dict[int, float]:
     """
     Compute Katz centrality for all nodes.
-    
+
     Katz centrality computes influence based on total walks, with
     attenuation factor alpha.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
@@ -209,7 +210,7 @@ def katz_centrality(
         Attenuation factor (should be < 1/lambda_max).
     beta : float, default 1.0
         Weight for immediate neighbors.
-    
+
     Returns
     -------
     dict
@@ -219,22 +220,22 @@ def katz_centrality(
 
 
 def load_centrality(
-    graph: Union['CellGraph', 'nx.Graph'],
+    graph: Union[CellGraph, nx.Graph],
     normalized: bool = True,
 ) -> Dict[int, float]:
     """
     Compute load centrality for all nodes.
-    
+
     Load centrality counts the fraction of shortest paths that pass
     through a node, weighted by path endpoints.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
     normalized : bool, default True
         Normalize values.
-    
+
     Returns
     -------
     dict
@@ -243,18 +244,18 @@ def load_centrality(
     return nx.load_centrality(_get_nx_graph(graph), normalized=normalized)
 
 
-def subgraph_centrality(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, float]:
+def subgraph_centrality(graph: Union[CellGraph, nx.Graph]) -> Dict[int, float]:
     """
     Compute subgraph centrality for all nodes.
-    
+
     Subgraph centrality counts closed walks of all lengths starting
     and ending at a node.
-    
+
     Parameters
     ----------
     graph : CellGraph or nx.Graph
         Input graph.
-    
+
     Returns
     -------
     dict
@@ -268,13 +269,13 @@ def subgraph_centrality(graph: Union['CellGraph', 'nx.Graph']) -> Dict[int, floa
 # ============================================================================
 
 def centrality_by_type(
-    graph: 'CellGraph',
+    graph: CellGraph,
     metric: str = 'degree',
     **kwargs
 ) -> Dict[str, Dict[str, float]]:
     """
     Compute centrality statistics grouped by cell type.
-    
+
     Parameters
     ----------
     graph : CellGraph
@@ -284,13 +285,13 @@ def centrality_by_type(
         'eigenvector', 'pagerank', 'harmonic', 'katz', 'load'.
     **kwargs
         Additional arguments for the centrality function.
-    
+
     Returns
     -------
     dict
         Dictionary mapping cell type to statistics dict containing
         'mean', 'std', 'median', 'min', 'max'.
-    
+
     Examples
     --------
     >>> stats = centrality_by_type(graph, metric='betweenness')
@@ -309,23 +310,22 @@ def centrality_by_type(
         'load': load_centrality,
         'subgraph': subgraph_centrality,
     }
-    
+
     if metric not in centrality_funcs:
         raise ValueError(
             f"Unknown centrality metric: {metric}. "
             f"Options: {list(centrality_funcs.keys())}"
         )
-    
+
     centrality = centrality_funcs[metric](graph, **kwargs)
-    
+
     # Group by cell type
     result = {}
-    cell_types = graph.cell_types
-    
+
     for cell_type in graph.cell_types_unique:
         nodes = graph.get_nodes_by_type(cell_type)
         values = np.array([centrality[n] for n in nodes])
-        
+
         if len(values) > 0:
             result[cell_type] = {
                 'mean': float(np.mean(values)),
@@ -344,18 +344,18 @@ def centrality_by_type(
                 'max': np.nan,
                 'count': 0,
             }
-    
+
     return result
 
 
 def mean_centrality_by_type(
-    graph: 'CellGraph',
+    graph: CellGraph,
     metric: str = 'degree',
     **kwargs
 ) -> Dict[str, float]:
     """
     Compute mean centrality for each cell type.
-    
+
     Parameters
     ----------
     graph : CellGraph
@@ -364,7 +364,7 @@ def mean_centrality_by_type(
         Centrality metric.
     **kwargs
         Additional arguments for the centrality function.
-    
+
     Returns
     -------
     dict
@@ -375,7 +375,7 @@ def mean_centrality_by_type(
 
 
 def top_central_nodes(
-    graph: 'CellGraph',
+    graph: CellGraph,
     metric: str = 'degree',
     n: int = 10,
     cell_type: Optional[str] = None,
@@ -383,7 +383,7 @@ def top_central_nodes(
 ) -> List[Dict[str, Any]]:
     """
     Get the top N most central nodes.
-    
+
     Parameters
     ----------
     graph : CellGraph
@@ -396,7 +396,7 @@ def top_central_nodes(
         Filter to specific cell type.
     **kwargs
         Additional arguments for the centrality function.
-    
+
     Returns
     -------
     list of dict
@@ -410,20 +410,20 @@ def top_central_nodes(
         'pagerank': pagerank,
         'harmonic': harmonic_centrality,
     }
-    
+
     if metric not in centrality_funcs:
         raise ValueError(f"Unknown metric: {metric}")
-    
+
     centrality = centrality_funcs[metric](graph, **kwargs)
-    
+
     # Filter by cell type if specified
     if cell_type is not None:
         valid_nodes = set(graph.get_nodes_by_type(cell_type))
         centrality = {k: v for k, v in centrality.items() if k in valid_nodes}
-    
+
     # Sort and take top N
     sorted_nodes = sorted(centrality.items(), key=lambda x: x[1], reverse=True)
-    
+
     result = []
     for node, cent_value in sorted_nodes[:n]:
         result.append({
@@ -432,5 +432,5 @@ def top_central_nodes(
             'centrality': cent_value,
             'coordinates': tuple(graph.coordinates[node]),
         })
-    
+
     return result

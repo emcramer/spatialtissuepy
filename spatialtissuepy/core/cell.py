@@ -5,7 +5,8 @@ This class provides a simple interface for accessing cell properties
 without the overhead of the full SpatialTissueData container.
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 
 
@@ -132,7 +133,7 @@ class Cell:
         """
         if self.ndim != other.ndim:
             raise ValueError(
-                f"Cannot compute distance between cells with different dimensionality"
+                "Cannot compute distance between cells with different dimensionality"
             )
         return float(np.linalg.norm(self.coordinates - other.coordinates))
 

@@ -25,18 +25,18 @@ This enables:
 Example
 -------
 >>> from spatialtissuepy.lda import SpatialLDA, fit_spatial_lda
->>> 
+>>>
 >>> # Quick fit
 >>> model = fit_spatial_lda(data, n_topics=5, neighborhood_radius=50)
->>> 
+>>>
 >>> # Get topic assignments
 >>> topic_weights = model.transform(data)
 >>> dominant_topics = model.predict(data)
->>> 
+>>>
 >>> # Analyze topics
 >>> print(model.topic_summary())
 >>> print(model.top_cell_types_per_topic())
->>> 
+>>>
 >>> # Multi-sample analysis
 >>> model = SpatialLDA(n_topics=8)
 >>> model.fit([data1, data2, data3])  # Joint fitting
@@ -51,41 +51,38 @@ References
        Triple Negative Breast Cancer Revealed by Multiplexed Ion Beam Imaging. Cell.
 """
 
-from .spatial_lda import (
-    SpatialLDA,
-    fit_spatial_lda,
-    compute_neighborhood_features,
-    compute_neighborhood_counts,
-)
-
-from .sampling import (
-    poisson_disk_sample,
-    grid_sample,
-    random_sample,
-    stratified_sample,
-    spatial_stratified_sample,
-)
-
 from .analysis import (
-    topic_cell_type_matrix,
-    topic_enrichment,
+    compare_topics_across_samples,
     dominant_topic_per_cell,
     topic_assignment_uncertainty,
-    topic_spatial_distribution,
-    topic_spatial_autocorrelation,
     topic_boundary_cells,
-    compare_topics_across_samples,
+    topic_cell_type_matrix,
+    topic_enrichment,
     topic_prevalence_by_cell_type,
+    topic_spatial_autocorrelation,
+    topic_spatial_distribution,
     topic_transition_matrix,
 )
-
 from .metrics import (
+    compute_model_selection_metrics,
+    spatial_topic_consistency,
     topic_coherence,
+    topic_concentration_index,
     topic_diversity,
     topic_exclusivity,
-    spatial_topic_consistency,
-    topic_concentration_index,
-    compute_model_selection_metrics,
+)
+from .sampling import (
+    grid_sample,
+    poisson_disk_sample,
+    random_sample,
+    spatial_stratified_sample,
+    stratified_sample,
+)
+from .spatial_lda import (
+    SpatialLDA,
+    compute_neighborhood_counts,
+    compute_neighborhood_features,
+    fit_spatial_lda,
 )
 
 __all__ = [

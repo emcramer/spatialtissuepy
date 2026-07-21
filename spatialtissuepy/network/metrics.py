@@ -5,7 +5,9 @@ Registers network-based metrics that can be included in StatisticsPanels.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, Optional, Union
+
+from typing import TYPE_CHECKING, Dict
+
 import numpy as np
 
 if TYPE_CHECKING:
@@ -29,14 +31,14 @@ except ImportError:
 # ============================================================================
 
 def _build_graph_from_data(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ):
     """Build a CellGraph from SpatialTissueData."""
     from .cell_graph import CellGraph
-    
+
     return CellGraph.from_spatial_data(
         data, method=method, radius=radius, k=k
     )
@@ -53,7 +55,7 @@ def _build_graph_from_data(
     parameters={'method': str, 'radius': float, 'k': int}
 )
 def graph_density(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
@@ -70,14 +72,14 @@ def graph_density(
     parameters={'method': str, 'radius': float, 'k': int}
 )
 def average_clustering_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Compute average clustering coefficient."""
     from .clustering import average_clustering
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     return {'average_clustering': average_clustering(graph)}
 
@@ -89,14 +91,14 @@ def average_clustering_metric(
     parameters={'method': str, 'radius': float, 'k': int}
 )
 def transitivity_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Compute graph transitivity."""
     from .clustering import transitivity
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     return {'transitivity': transitivity(graph)}
 
@@ -109,17 +111,17 @@ def transitivity_metric(
     dynamic_columns=True
 )
 def mean_clustering_by_type_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Compute mean clustering coefficient per cell type."""
     from .clustering import mean_clustering_by_type
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     stats = mean_clustering_by_type(graph)
-    
+
     return {f'clustering_{ct}': val for ct, val in stats.items()}
 
 
@@ -130,14 +132,14 @@ def mean_clustering_by_type_metric(
     parameters={'method': str, 'radius': float, 'k': int}
 )
 def type_assortativity_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Compute cell type assortativity."""
     from .assortativity import type_assortativity
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     return {'type_assortativity': type_assortativity(graph)}
 
@@ -149,14 +151,14 @@ def type_assortativity_metric(
     parameters={'method': str, 'radius': float, 'k': int}
 )
 def degree_assortativity_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Compute degree assortativity."""
     from .assortativity import degree_assortativity
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     return {'degree_assortativity': degree_assortativity(graph)}
 
@@ -168,14 +170,14 @@ def degree_assortativity_metric(
     parameters={'method': str, 'radius': float, 'k': int}
 )
 def homophily_ratio_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Compute homophily ratio."""
     from .assortativity import homophily_ratio
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     return {'homophily_ratio': homophily_ratio(graph)}
 
@@ -188,17 +190,17 @@ def homophily_ratio_metric(
     dynamic_columns=True
 )
 def mean_degree_centrality_by_type_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Compute mean degree centrality per cell type."""
     from .centrality import mean_centrality_by_type
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     stats = mean_centrality_by_type(graph, metric='degree')
-    
+
     return {f'degree_centrality_{ct}': val for ct, val in stats.items()}
 
 
@@ -210,17 +212,17 @@ def mean_degree_centrality_by_type_metric(
     dynamic_columns=True
 )
 def mean_betweenness_centrality_by_type_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Compute mean betweenness centrality per cell type."""
     from .centrality import mean_centrality_by_type
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     stats = mean_centrality_by_type(graph, metric='betweenness')
-    
+
     return {f'betweenness_centrality_{ct}': val for ct, val in stats.items()}
 
 
@@ -232,17 +234,17 @@ def mean_betweenness_centrality_by_type_metric(
     dynamic_columns=True
 )
 def mean_closeness_centrality_by_type_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Compute mean closeness centrality per cell type."""
     from .centrality import mean_centrality_by_type
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     stats = mean_centrality_by_type(graph, metric='closeness')
-    
+
     return {f'closeness_centrality_{ct}': val for ct, val in stats.items()}
 
 
@@ -253,14 +255,14 @@ def mean_closeness_centrality_by_type_metric(
     parameters={'method': str, 'radius': float, 'k': int}
 )
 def global_efficiency_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Compute global efficiency."""
     from .communicability import global_efficiency
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     return {'global_efficiency': global_efficiency(graph)}
 
@@ -272,14 +274,14 @@ def global_efficiency_metric(
     parameters={'method': str, 'radius': float, 'k': int}
 )
 def local_efficiency_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Compute local efficiency."""
     from .communicability import local_efficiency
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     return {'local_efficiency': local_efficiency(graph)}
 
@@ -291,14 +293,14 @@ def local_efficiency_metric(
     parameters={'method': str, 'radius': float, 'k': int}
 )
 def n_connected_components_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Count connected components."""
     from .clustering import n_connected_components
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     return {'n_connected_components': float(n_connected_components(graph))}
 
@@ -310,19 +312,19 @@ def n_connected_components_metric(
     parameters={'method': str, 'radius': float, 'k': int}
 )
 def largest_component_fraction_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Fraction of cells in largest component."""
     from .clustering import largest_component_size
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
-    
+
     if graph.n_nodes == 0:
         return {'largest_component_fraction': np.nan}
-    
+
     return {
         'largest_component_fraction': largest_component_size(graph) / graph.n_nodes
     }
@@ -335,14 +337,14 @@ def largest_component_fraction_metric(
     parameters={'method': str, 'radius': float, 'k': int}
 )
 def n_articulation_points_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'proximity',
     radius: float = 50.0,
     k: int = 6,
 ) -> Dict[str, float]:
     """Count articulation points."""
     from .clustering import articulation_points
-    
+
     graph = _build_graph_from_data(data, method, radius, k)
     return {'n_articulation_points': float(len(articulation_points(graph)))}
 
@@ -354,7 +356,7 @@ def n_articulation_points_metric(
     parameters={'type_a': str, 'type_b': str, 'method': str, 'radius': float}
 )
 def communicability_between_types_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     type_a: str,
     type_b: str,
     method: str = 'proximity',
@@ -363,12 +365,12 @@ def communicability_between_types_metric(
 ) -> Dict[str, float]:
     """Compute communicability between two cell types."""
     from .communicability import communicability_between_types
-    
+
     graph = _build_graph_from_data(data, method, radius, k=6)
     stats = communicability_between_types(
         graph, type_a, type_b, sample_size=sample_size
     )
-    
+
     return {f'communicability_{type_a}_{type_b}': stats['mean']}
 
 
@@ -379,7 +381,7 @@ def communicability_between_types_metric(
     parameters={'type_a': str, 'type_b': str, 'method': str, 'radius': float}
 )
 def shortest_path_between_types_metric(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     type_a: str,
     type_b: str,
     method: str = 'proximity',
@@ -388,10 +390,10 @@ def shortest_path_between_types_metric(
 ) -> Dict[str, float]:
     """Compute mean shortest path between two cell types."""
     from .communicability import shortest_path_length_between_types
-    
+
     graph = _build_graph_from_data(data, method, radius, k=6)
     stats = shortest_path_length_between_types(
         graph, type_a, type_b, sample_size=sample_size
     )
-    
+
     return {f'shortest_path_{type_a}_{type_b}': stats['mean']}

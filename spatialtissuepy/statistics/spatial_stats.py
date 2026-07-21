@@ -26,7 +26,9 @@ References
 """
 
 from __future__ import annotations
-from typing import Optional, Tuple, Dict, List, Union, TYPE_CHECKING
+
+from typing import TYPE_CHECKING, Dict, List, Optional
+
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.spatial.distance import cdist
@@ -85,32 +87,32 @@ def ripleys_k(
     n = len(coordinates)
     if n < 2:
         return np.zeros(len(radii))
-    
+
     # Compute study region
     min_coords = coordinates.min(axis=0)
     max_coords = coordinates.max(axis=0)
-    
+
     if area is None:
         area = np.prod(max_coords - min_coords)
-    
+
     if area <= 0:
         return np.zeros(len(radii))
-    
+
     # Build KD-tree for efficient queries
     tree = cKDTree(coordinates)
-    
+
     # Compute all pairwise distances up to max radius
     max_r = radii.max()
     pairs = tree.query_pairs(max_r, output_type='ndarray')
-    
+
     if len(pairs) == 0:
         return np.zeros(len(radii))
-    
+
     # Compute distances for pairs
     distances = np.linalg.norm(
         coordinates[pairs[:, 0]] - coordinates[pairs[:, 1]], axis=1
     )
-    
+
     # Edge correction weights
     if edge_correction == 'none':
         weights = np.ones(len(distances))
@@ -126,16 +128,16 @@ def ripleys_k(
         )
     else:
         raise ValueError(f"Unknown edge_correction: {edge_correction}")
-    
+
     # Compute K for each radius
     K = np.zeros(len(radii))
     intensity = n / area
-    
+
     for i, r in enumerate(radii):
         mask = distances <= r
         # Count pairs (multiply by 2 since we only have i<j pairs)
         K[i] = 2 * np.sum(weights[mask]) / (n * intensity)
-    
+
     return K
 
 
@@ -148,17 +150,17 @@ def _ripley_edge_correction(
 ) -> np.ndarray:
     """
     Compute Ripley's isotropic edge correction weights.
-    
+
     For each point, the weight accounts for the fraction of the circle
     that falls within the study region.
     """
     weights = np.ones(len(distances))
-    
+
     for idx, (i, j) in enumerate(pairs):
         d = distances[idx]
         if d == 0:
             continue
-        
+
         # For both points, compute fraction of circle in bounds
         w_i = _circle_in_rectangle_fraction(
             coordinates[i], d, min_coords, max_coords
@@ -166,10 +168,10 @@ def _ripley_edge_correction(
         w_j = _circle_in_rectangle_fraction(
             coordinates[j], d, min_coords, max_coords
         )
-        
+
         # Average weight
         weights[idx] = 2.0 / (w_i + w_j) if (w_i + w_j) > 0 else 1.0
-    
+
     return weights
 
 
@@ -188,10 +190,10 @@ def _circle_in_rectangle_fraction(
     d_right = max_coords[0] - center[0]
     d_bottom = center[1] - min_coords[1]
     d_top = max_coords[1] - center[1]
-    
+
     # Count how many boundaries the circle crosses
     fraction = 1.0
-    
+
     for d in [d_left, d_right, d_bottom, d_top]:
         if d < radius:
             # Approximate: fraction outside ≈ acos(d/r) / π
@@ -199,7 +201,7 @@ def _circle_in_rectangle_fraction(
                 fraction -= np.arccos(min(d / radius, 1.0)) / (2 * np.pi)
             else:
                 fraction -= 0.25  # Point outside boundary
-    
+
     return max(fraction, 0.1)  # Minimum weight to avoid division issues
 
 
@@ -272,7 +274,7 @@ def ripleys_h(
     Under CSR, H(r) = 0.
     - H(r) > 0 indicates clustering at scale r
     - H(r) < 0 indicates dispersion at scale r
-    
+
     This is the most interpretable form for detecting spatial patterns.
     """
     L = ripleys_l(coordinates, radii, area, edge_correction)
@@ -320,24 +322,24 @@ def cross_k(
     - Kab(r) < π*r² indicates repulsion/segregation
     """
     na, nb = len(coords_a), len(coords_b)
-    
+
     if na == 0 or nb == 0:
         return np.zeros(len(radii))
-    
+
     # Combined coordinates for area calculation
     all_coords = np.vstack([coords_a, coords_b])
     min_coords = all_coords.min(axis=0)
     max_coords = all_coords.max(axis=0)
-    
+
     if area is None:
         area = np.prod(max_coords - min_coords)
-    
+
     if area <= 0:
         return np.zeros(len(radii))
-    
+
     # Compute cross-distances
     distances = cdist(coords_a, coords_b).ravel()
-    
+
     # Edge correction (simplified for cross-K)
     if edge_correction == 'none':
         weights = np.ones(len(distances))
@@ -354,14 +356,14 @@ def cross_k(
                     )
                     weights[idx] = 1.0 / max(w, 0.1)
                 idx += 1
-    
+
     # Compute K for each radius
     K = np.zeros(len(radii))
-    
+
     for i, r in enumerate(radii):
         mask = distances <= r
         K[i] = area * np.sum(weights[mask]) / (na * nb)
-    
+
     return K
 
 
@@ -452,44 +454,44 @@ def g_function(
     n = len(coordinates)
     if n < 2:
         return np.zeros(len(radii))
-    
+
     # Compute nearest neighbor distances
     tree = cKDTree(coordinates)
     nn_distances, _ = tree.query(coordinates, k=2)
     nn_distances = nn_distances[:, 1]  # Exclude self
-    
+
     # Compute empirical CDF
     G = np.zeros(len(radii))
-    
+
     if edge_correction == 'none':
         for i, r in enumerate(radii):
             G[i] = np.mean(nn_distances <= r)
-    
+
     elif edge_correction in ['km', 'rs']:
         # Kaplan-Meier estimator with border distance censoring
         min_coords = coordinates.min(axis=0)
         max_coords = coordinates.max(axis=0)
-        
+
         # Distance to nearest boundary
         border_dist = np.minimum(
-            np.minimum(coordinates[:, 0] - min_coords[0], 
+            np.minimum(coordinates[:, 0] - min_coords[0],
                       max_coords[0] - coordinates[:, 0]),
             np.minimum(coordinates[:, 1] - min_coords[1],
                       max_coords[1] - coordinates[:, 1])
         )
-        
+
         for i, r in enumerate(radii):
             # Points with nn_distance <= r and not censored
             observed = (nn_distances <= r) & (border_dist >= nn_distances)
             # Points at risk (border_dist >= r or nn_distance <= r)
             at_risk = (border_dist >= r) | (nn_distances <= r)
-            
+
             if np.sum(at_risk) > 0:
                 G[i] = np.sum(observed) / np.sum(at_risk)
-    
+
     else:
         raise ValueError(f"Unknown edge_correction: {edge_correction}")
-    
+
     return G
 
 
@@ -519,11 +521,11 @@ def g_function_cross(
     """
     if len(coords_a) == 0 or len(coords_b) == 0:
         return np.zeros(len(radii))
-    
+
     # Nearest b-neighbor for each a-point
     tree_b = cKDTree(coords_b)
     nn_distances, _ = tree_b.query(coords_a, k=1)
-    
+
     # Empirical CDF
     G = np.array([np.mean(nn_distances <= r) for r in radii])
     return G
@@ -568,21 +570,21 @@ def f_function(
     """
     if len(coordinates) == 0:
         return np.zeros(len(radii))
-    
+
     rng = np.random.default_rng(seed)
-    
+
     # Generate random test points in bounding box
     min_coords = coordinates.min(axis=0)
     max_coords = coordinates.max(axis=0)
-    
+
     test_points = rng.uniform(
         min_coords, max_coords, size=(n_test_points, coordinates.shape[1])
     )
-    
+
     # Distance from test points to nearest data point
     tree = cKDTree(coordinates)
     nn_distances, _ = tree.query(test_points, k=1)
-    
+
     # Empirical CDF
     F = np.array([np.mean(nn_distances <= r) for r in radii])
     return F
@@ -627,12 +629,12 @@ def j_function(
     """
     G = g_function(coordinates, radii)
     F = f_function(coordinates, radii, n_test_points, seed)
-    
+
     # Avoid division by zero
     with np.errstate(divide='ignore', invalid='ignore'):
         J = (1 - G) / (1 - F)
         J = np.where(np.isfinite(J), J, 1.0)
-    
+
     return J
 
 
@@ -678,44 +680,44 @@ def pair_correlation_function(
     n = len(coordinates)
     if n < 2:
         return np.ones(len(radii))
-    
+
     if bandwidth is None:
         if len(radii) > 1:
             bandwidth = (radii[-1] - radii[0]) / (len(radii) - 1)
         else:
             bandwidth = radii[0] / 10
-    
+
     min_coords = coordinates.min(axis=0)
     max_coords = coordinates.max(axis=0)
-    
+
     if area is None:
         area = np.prod(max_coords - min_coords)
-    
+
     if area <= 0:
         return np.ones(len(radii))
-    
+
     intensity = n / area
-    
+
     # Compute all pairwise distances
     tree = cKDTree(coordinates)
     max_r = radii.max() + 2 * bandwidth
     pairs = tree.query_pairs(max_r, output_type='ndarray')
-    
+
     if len(pairs) == 0:
         return np.ones(len(radii))
-    
+
     distances = np.linalg.norm(
         coordinates[pairs[:, 0]] - coordinates[pairs[:, 1]], axis=1
     )
-    
+
     # Kernel density estimate at each radius
     g = np.zeros(len(radii))
-    
+
     for i, r in enumerate(radii):
         if r <= 0:
             g[i] = 1.0
             continue
-        
+
         # Epanechnikov kernel
         u = (distances - r) / bandwidth
         kernel_weights = np.where(
@@ -723,16 +725,16 @@ def pair_correlation_function(
             0.75 * (1 - u**2) / bandwidth,
             0
         )
-        
+
         # Expected count under CSR at distance r
         ring_area = 2 * np.pi * r * bandwidth
         expected = n * intensity * ring_area / 2
-        
+
         if expected > 0:
             g[i] = 2 * np.sum(kernel_weights) / (n * intensity * 2 * np.pi * r)
         else:
             g[i] = 1.0
-    
+
     return g
 
 
@@ -783,13 +785,13 @@ def csr_envelope(
     >>> significant = (H_observed < envelope['lower']) | (H_observed > envelope['upper'])
     """
     rng = np.random.default_rng(seed)
-    
+
     # Assume square region for simplicity
     side = np.sqrt(area)
-    
+
     # Run simulations
     simulations = np.zeros((n_simulations, len(radii)))
-    
+
     stat_func = {
         'K': lambda c: ripleys_k(c, radii, area),
         'L': lambda c: ripleys_l(c, radii, area),
@@ -798,19 +800,19 @@ def csr_envelope(
         'F': lambda c: f_function(c, radii, seed=None),
         'g': lambda c: pair_correlation_function(c, radii, area=area),
     }.get(statistic)
-    
+
     if stat_func is None:
         raise ValueError(f"Unknown statistic: {statistic}")
-    
+
     for i in range(n_simulations):
         # Generate CSR pattern
         coords = rng.uniform(0, side, size=(n_points, 2))
         simulations[i] = stat_func(coords)
-    
+
     # Compute envelopes
     lower = np.percentile(simulations, 2.5, axis=0)
     upper = np.percentile(simulations, 97.5, axis=0)
-    
+
     # Theoretical values under CSR
     intensity = n_points / area
     if statistic == 'K':
@@ -825,7 +827,7 @@ def csr_envelope(
         theoretical = np.ones(len(radii))
     else:
         theoretical = np.mean(simulations, axis=0)
-    
+
     return {
         'theoretical': theoretical,
         'lower': lower,
@@ -840,7 +842,7 @@ def csr_envelope(
 # -----------------------------------------------------------------------------
 
 def spatial_statistics(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     radii: Optional[np.ndarray] = None,
     n_radii: int = 50,
     max_radius: Optional[float] = None,
@@ -876,23 +878,23 @@ def spatial_statistics(
         coords = data._coordinates[idx, :2]
     else:
         coords = data._coordinates[:, :2]
-    
+
     if len(coords) < 2:
         raise ValueError("Need at least 2 points for spatial statistics")
-    
+
     # Auto-generate radii
     if radii is None:
         if max_radius is None:
             extent = data.extent
             max_radius = min(extent['x'], extent['y']) / 4
         radii = np.linspace(0, max_radius, n_radii)
-    
+
     # Compute area
     bounds = data.bounds
     area = (bounds['x'][1] - bounds['x'][0]) * (bounds['y'][1] - bounds['y'][0])
-    
+
     result = {'radii': radii}
-    
+
     for stat in statistics:
         if stat == 'K':
             result['K'] = ripleys_k(coords, radii, area)
@@ -908,12 +910,12 @@ def spatial_statistics(
             result['J'] = j_function(coords, radii)
         elif stat == 'g':
             result['g'] = pair_correlation_function(coords, radii, area=area)
-    
+
     return result
 
 
 def cross_type_statistics(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     type_a: str,
     type_b: str,
     radii: Optional[np.ndarray] = None,
@@ -946,22 +948,22 @@ def cross_type_statistics(
     """
     coords_a = data._coordinates[data.get_cells_by_type(type_a), :2]
     coords_b = data._coordinates[data.get_cells_by_type(type_b), :2]
-    
+
     if len(coords_a) == 0 or len(coords_b) == 0:
         raise ValueError(f"Need points of both types: {type_a}, {type_b}")
-    
+
     # Auto-generate radii
     if radii is None:
         if max_radius is None:
             extent = data.extent
             max_radius = min(extent['x'], extent['y']) / 4
         radii = np.linspace(0, max_radius, n_radii)
-    
+
     bounds = data.bounds
     area = (bounds['x'][1] - bounds['x'][0]) * (bounds['y'][1] - bounds['y'][0])
-    
+
     result = {'radii': radii}
-    
+
     for stat in statistics:
         if stat == 'K':
             result['K'] = cross_k(coords_a, coords_b, radii, area)
@@ -971,5 +973,5 @@ def cross_type_statistics(
             result['H'] = cross_h(coords_a, coords_b, radii, area)
         elif stat == 'G':
             result['G'] = g_function_cross(coords_a, coords_b, radii)
-    
+
     return result

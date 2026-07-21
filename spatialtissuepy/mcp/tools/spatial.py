@@ -15,7 +15,7 @@ Tools (7 total):
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -118,7 +118,7 @@ class VoronoiResult(BaseModel):
 # --- Tool Registration ---
 
 
-def register_tools(mcp: "FastMCP") -> None:
+def register_tools(mcp: FastMCP) -> None:
     """Register spatial tools with the MCP server."""
 
     @mcp.tool()
@@ -151,6 +151,7 @@ def register_tools(mcp: "FastMCP") -> None:
         """
         import numpy as np
         from scipy.spatial.distance import pdist, squareform
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -216,7 +217,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Summary of nearest neighbor distances.
         """
         import numpy as np
+
         from spatialtissuepy.spatial import nearest_neighbors
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -279,7 +282,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Summary of neighbor counts per cell.
         """
         import numpy as np
+
         from spatialtissuepy.spatial import radius_neighbors
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -338,7 +343,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Summary statistics of cell densities.
         """
         import numpy as np
+
         from spatialtissuepy.spatial import radius_neighbors
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -392,7 +399,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Information about boundary cells.
         """
         import numpy as np
+
         from spatialtissuepy.spatial import boundary_cells
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -437,8 +446,8 @@ def register_tools(mcp: "FastMCP") -> None:
         ConvexHullResult
             Hull area, perimeter, and vertices.
         """
-        import numpy as np
         from scipy.spatial import ConvexHull
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -495,6 +504,7 @@ def register_tools(mcp: "FastMCP") -> None:
         """
         import numpy as np
         from scipy.spatial import Voronoi
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()

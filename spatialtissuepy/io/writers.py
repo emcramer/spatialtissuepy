@@ -5,9 +5,11 @@ Supports CSV, JSON, and HDF5 formats.
 """
 
 from __future__ import annotations
-from typing import Optional, Dict, Any, Union, TYPE_CHECKING
-from pathlib import Path
+
 import json
+from pathlib import Path
+from typing import TYPE_CHECKING, Union
+
 import numpy as np
 import pandas as pd
 
@@ -17,7 +19,7 @@ if TYPE_CHECKING:
 
 class NumpyEncoder(json.JSONEncoder):
     """JSON encoder that handles numpy types."""
-    
+
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
@@ -31,7 +33,7 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 def write_csv(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     filepath: Union[str, Path],
     include_markers: bool = True,
     include_neighborhoods: bool = True,
@@ -76,7 +78,7 @@ def write_csv(
 
 
 def write_json(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     filepath: Union[str, Path],
     include_markers: bool = True,
     include_metadata: bool = True,
@@ -146,7 +148,7 @@ def write_json(
 
 
 def write_hdf5(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     filepath: Union[str, Path],
     compression: str = 'gzip',
     compression_opts: int = 4
@@ -235,7 +237,7 @@ def write_hdf5(
 
 
 def write_anndata(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     filepath: Union[str, Path],
     spatial_key: str = 'spatial'
 ) -> None:

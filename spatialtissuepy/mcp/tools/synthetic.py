@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from fastmcp import FastMCP
@@ -95,7 +95,7 @@ class ExperimentInfo(BaseModel):
     simulation_names: List[str]
 
 
-def register_tools(mcp: "FastMCP") -> None:
+def register_tools(mcp: FastMCP) -> None:
     """Register synthetic tools with the MCP server."""
 
     @mcp.tool()
@@ -121,9 +121,11 @@ def register_tools(mcp: "FastMCP") -> None:
         SimulationInfo
             Information about the loaded simulation.
         """
-        from spatialtissuepy.synthetic import PhysiCellSimulation
-        from ..server import get_session_manager, resolve_data_path
         import pickle
+
+        from spatialtissuepy.synthetic import PhysiCellSimulation
+
+        from ..server import get_session_manager, resolve_data_path
 
         session_mgr = get_session_manager()
         session_id = session_mgr.get_or_create_session(session_id)
@@ -178,6 +180,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Information about the timestep.
         """
         from spatialtissuepy.synthetic import read_physicell_timestep
+
         from ..server import get_session_manager, resolve_data_path
 
         session_mgr = get_session_manager()
@@ -219,8 +222,9 @@ def register_tools(mcp: "FastMCP") -> None:
         TimestepList
             Available timesteps with basic info.
         """
-        from ..server import get_session_manager
         import pickle
+
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
 
@@ -273,8 +277,9 @@ def register_tools(mcp: "FastMCP") -> None:
         TimestepInfo
             Timestep information.
         """
-        from ..server import get_session_manager
         import pickle
+
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
 
@@ -329,8 +334,9 @@ def register_tools(mcp: "FastMCP") -> None:
         # Call the underlying logic directly rather than the decorated
         # synthetic_get_timestep() tool -- FastMCP wraps @mcp.tool() functions
         # in a FunctionTool object that is not directly callable.
-        from ..server import get_session_manager
         import pickle
+
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
 
@@ -374,8 +380,9 @@ def register_tools(mcp: "FastMCP") -> None:
         TrajectoryResult
             Cell counts over time, total and by type.
         """
-        from ..server import get_session_manager
         import pickle
+
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
 
@@ -426,8 +433,9 @@ def register_tools(mcp: "FastMCP") -> None:
         ProportionsResult
             Proportions over time by type.
         """
-        from ..server import get_session_manager
         import pickle
+
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
 
@@ -486,8 +494,9 @@ def register_tools(mcp: "FastMCP") -> None:
         SummarizeResult
             Summary statistics over time.
         """
-        from ..server import get_session_manager
         import pickle
+
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         panel = session_mgr.load_panel(session_id, panel_key)
@@ -537,9 +546,11 @@ def register_tools(mcp: "FastMCP") -> None:
         ExperimentInfo
             Information about the experiment.
         """
-        from spatialtissuepy.synthetic import PhysiCellExperiment
-        from ..server import get_session_manager, resolve_data_path
         import pickle
+
+        from spatialtissuepy.synthetic import PhysiCellExperiment
+
+        from ..server import get_session_manager, resolve_data_path
 
         session_mgr = get_session_manager()
         session_id = session_mgr.get_or_create_session(session_id)

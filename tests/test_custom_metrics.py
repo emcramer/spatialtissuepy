@@ -5,28 +5,28 @@ Tests the user-facing API for defining and registering custom metrics,
 including both decorator-based global registration and inline panel functions.
 """
 
-import pytest
-import numpy as np
 from typing import Dict
+
+import numpy as np
+import pytest
 
 from spatialtissuepy import SpatialTissueData
 from spatialtissuepy.summary import (
+    MetricRegistrationError,
+    # Exceptions
+    MetricValidationError,
+    SpatialSummary,
+    # Panel
+    StatisticsPanel,
+    clear_custom_metrics,
+    describe_metric,
+    get_metric,
+    list_custom_metrics,
+    list_metrics,
     # Custom metric API
     register_custom_metric,
     unregister_custom_metric,
-    list_custom_metrics,
-    clear_custom_metrics,
-    get_metric,
-    list_metrics,
-    describe_metric,
-    # Exceptions
-    MetricValidationError,
-    MetricRegistrationError,
-    # Panel
-    StatisticsPanel,
-    SpatialSummary,
 )
-
 
 # =============================================================================
 # Fixtures

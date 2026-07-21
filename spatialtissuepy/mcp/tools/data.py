@@ -112,7 +112,7 @@ class MarkerInfo(BaseModel):
 # --- Tool Registration ---
 
 
-def register_tools(mcp: "FastMCP") -> None:
+def register_tools(mcp: FastMCP) -> None:
     """Register data tools with the MCP server."""
 
     @mcp.tool()
@@ -171,6 +171,7 @@ def register_tools(mcp: "FastMCP") -> None:
             data_load_csv("/path/to/cohort.csv", sample_col="patient_id")
         """
         from spatialtissuepy.io import read_csv
+
         from ..server import get_session_manager, resolve_data_path
 
         session_mgr = get_session_manager()
@@ -254,6 +255,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Summary of the loaded dataset.
         """
         from spatialtissuepy.io import read_json
+
         from ..server import get_session_manager, resolve_data_path
 
         session_mgr = get_session_manager()
@@ -317,6 +319,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Confirmation with file path and row count.
         """
         from spatialtissuepy.io import write_csv
+
         from ..server import get_session_manager, resolve_data_path
 
         session_mgr = get_session_manager()
@@ -358,6 +361,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Confirmation with file path and cell count.
         """
         from spatialtissuepy.io import write_json
+
         from ..server import get_session_manager, resolve_data_path
 
         session_mgr = get_session_manager()
@@ -609,7 +613,7 @@ def register_tools(mcp: "FastMCP") -> None:
             raise ValueError(f"No data found with key '{data_key}'")
 
         # Get indices for specified cell types
-        mask = data.cell_types.isin(cell_types) if hasattr(data.cell_types, 'isin') else [ct in cell_types for ct in data.cell_types]
+        data.cell_types.isin(cell_types) if hasattr(data.cell_types, 'isin') else [ct in cell_types for ct in data.cell_types]
         subset = data.subset(cell_types=cell_types)
 
         out_key = output_key or data_key

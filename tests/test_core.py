@@ -4,23 +4,21 @@ Tests for spatialtissuepy.core module.
 Tests SpatialTissueData, Cell, and validators.
 """
 
-import pytest
+
 import numpy as np
 import pandas as pd
-import tempfile
-from pathlib import Path
+import pytest
 
-from spatialtissuepy.core.spatial_data import SpatialTissueData
 from spatialtissuepy.core.cell import Cell
+from spatialtissuepy.core.spatial_data import SpatialTissueData
 from spatialtissuepy.core.validators import (
     ValidationError,
-    validate_coordinates,
     validate_cell_types,
-    validate_sample_ids,
+    validate_coordinates,
     validate_marker_data,
     validate_positive_number,
+    validate_sample_ids,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -205,7 +203,7 @@ class TestCell:
             cell1.distance_to(cell2)
 
     def test_cell_markers(self):
-        cell = Cell(0, x=0, y=0, cell_type='T_cell', 
+        cell = Cell(0, x=0, y=0, cell_type='T_cell',
                     markers={'CD3': 0.8, 'CD8': 0.5})
         assert cell.get_marker('CD3') == 0.8
         assert np.isnan(cell.get_marker('CD4'))

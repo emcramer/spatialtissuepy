@@ -9,15 +9,15 @@ from __future__ import annotations
 
 import base64
 import io
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:
     from spatialtissuepy.lda import SpatialLDA
-    from spatialtissuepy.topology import MapperResult
     from spatialtissuepy.network import CellGraph
+    from spatialtissuepy.topology import MapperResult
 
 
 class MCPSerializer:
@@ -219,7 +219,7 @@ class MCPSerializer:
 
 
 def serialize_graph(
-    graph: "CellGraph",
+    graph: CellGraph,
     params: Optional[Dict] = None,
 ) -> Dict[str, Any]:
     """
@@ -240,7 +240,7 @@ def serialize_graph(
         JSON-serializable graph representation.
     """
     try:
-        import networkx as nx
+        import networkx as nx  # noqa: F401 (optional dependency probe)
     except ImportError:
         raise ImportError("networkx required for graph serialization")
 
@@ -299,7 +299,7 @@ def serialize_graph(
     }
 
 
-def deserialize_graph(data: Dict[str, Any]) -> "CellGraph":
+def deserialize_graph(data: Dict[str, Any]) -> CellGraph:
     """
     Reconstruct NetworkX graph from serialized data.
 
@@ -344,7 +344,7 @@ def deserialize_graph(data: Dict[str, Any]) -> "CellGraph":
 
 
 def serialize_model(
-    model: Union["SpatialLDA", "MapperResult", Any],
+    model: Union[SpatialLDA, MapperResult, Any],
     model_type: str,
 ) -> Dict[str, Any]:
     """
@@ -377,10 +377,10 @@ def serialize_model(
         components = getattr(model, "topic_cell_type_matrix_", None)
         if components is None and hasattr(model, "_lda_model") and model._lda_model is not None:
             components = getattr(model._lda_model, "components_", None)
-            
+
         if components is not None:
             result["components"] = components.tolist()
-            
+
         cell_types = getattr(model, "cell_types_", None)
         if cell_types is not None:
             result["cell_types"] = list(cell_types)
@@ -426,7 +426,7 @@ def serialize_model(
 
 def deserialize_model(
     data: Dict[str, Any],
-) -> Union["SpatialLDA", "MapperResult", Dict]:
+) -> Union[SpatialLDA, MapperResult, Dict]:
     """
     Reconstruct model from serialized data.
 
@@ -444,8 +444,9 @@ def deserialize_model(
 
     if model_type == "spatial_lda":
         try:
-            from spatialtissuepy.lda import SpatialLDA
             from sklearn.decomposition import LatentDirichletAllocation
+
+            from spatialtissuepy.lda import SpatialLDA
 
             model = SpatialLDA(
                 n_topics=data["n_topics"],
@@ -457,7 +458,7 @@ def deserialize_model(
             if data.get("components"):
                 components = np.array(data["components"])
                 model.topic_cell_type_matrix_ = components
-                
+
                 # Reconstruct sklearn model for transformation
                 lda_model = LatentDirichletAllocation(
                     n_components=data["n_topics"],
@@ -465,10 +466,10 @@ def deserialize_model(
                 )
                 lda_model.components_ = components
                 model._lda_model = lda_model
-                
+
             if data.get("cell_types"):
                 model.cell_types_ = list(data["cell_types"])
-                
+
             if data.get("is_fitted"):
                 model._is_fitted = True
 
@@ -478,7 +479,7 @@ def deserialize_model(
 
     elif model_type == "mapper_result":
         try:
-            from spatialtissuepy.topology import MapperResult, MapperNode, MapperEdge
+            from spatialtissuepy.topology import MapperEdge, MapperNode, MapperResult
 
             nodes = []
             for n in data.get("nodes", []):

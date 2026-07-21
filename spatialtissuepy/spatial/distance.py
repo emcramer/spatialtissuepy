@@ -7,16 +7,18 @@ radius-based and k-nearest neighbor queries.
 
 References
 ----------
-.. [1] Bentley, J. L. (1975). Multidimensional binary search trees used for 
+.. [1] Bentley, J. L. (1975). Multidimensional binary search trees used for
        associative searching. Communications of the ACM.
 """
 
 from __future__ import annotations
-from typing import Optional, Tuple, Union, List, Dict, TYPE_CHECKING
+
 from enum import Enum
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 from scipy.spatial import cKDTree
-from scipy.spatial.distance import cdist, pdist, squareform
+from scipy.spatial.distance import cdist, pdist
 
 if TYPE_CHECKING:
     from spatialtissuepy.core import SpatialTissueData
@@ -47,7 +49,7 @@ def pairwise_distances(
     coordinates : np.ndarray
         Point coordinates of shape (n_points, n_dims).
     metric : str, default 'euclidean'
-        Distance metric. Supported: 'euclidean', 'manhattan', 'chebyshev', 
+        Distance metric. Supported: 'euclidean', 'manhattan', 'chebyshev',
         'minkowski', or any metric supported by scipy.spatial.distance.cdist.
     **kwargs
         Additional arguments passed to cdist (e.g., p for Minkowski).
@@ -227,23 +229,23 @@ def nearest_neighbors(
     (100, 5)
     """
     tree = build_kdtree(coordinates)
-    
+
     # Query k+1 if excluding self (first neighbor is self)
     k_query = k if include_self else k + 1
     k_query = min(k_query, len(coordinates))
-    
+
     distances, indices = tree.query(coordinates, k=k_query)
-    
+
     # Handle 1D case
     if k_query == 1:
         distances = distances.reshape(-1, 1)
         indices = indices.reshape(-1, 1)
-    
+
     # Remove self if needed
     if not include_self and k_query > 1:
         distances = distances[:, 1:]
         indices = indices[:, 1:]
-    
+
     if return_distances:
         return distances, indices
     return indices
@@ -290,15 +292,15 @@ def radius_neighbors(
     """
     tree = build_kdtree(coordinates)
     indices_list = tree.query_ball_tree(tree, radius)
-    
+
     # Remove self from each neighborhood
     for i, neighbors in enumerate(indices_list):
         if i in neighbors:
             neighbors.remove(i)
-    
+
     # Convert to numpy arrays
     indices = [np.array(idx, dtype=int) for idx in indices_list]
-    
+
     if return_distances or sort_results:
         distances = []
         for i, idx in enumerate(indices):
@@ -313,10 +315,10 @@ def radius_neighbors(
                 distances.append(dists)
             else:
                 distances.append(np.array([], dtype=float))
-        
+
         if return_distances:
             return distances, indices
-    
+
     return indices
 
 
@@ -357,7 +359,7 @@ def mean_nearest_neighbor_distance(
     Compute mean distance to k-th nearest neighbor.
 
     This is a common spatial statistic for assessing point pattern regularity.
-    
+
     Parameters
     ----------
     coordinates : np.ndarray
@@ -388,7 +390,7 @@ def mean_nearest_neighbor_distance(
 # -----------------------------------------------------------------------------
 
 def distance_to_type(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     target_type: str,
     from_indices: Optional[np.ndarray] = None
 ) -> np.ndarray:
@@ -414,30 +416,30 @@ def distance_to_type(
     --------
     >>> # Distance from all cells to nearest tumor cell
     >>> distances = distance_to_type(data, 'Tumor')
-    >>> 
+    >>>
     >>> # Distance from T cells to nearest tumor cell
     >>> t_cell_idx = data.get_cells_by_type('T_cell')
     >>> distances = distance_to_type(data, 'Tumor', from_indices=t_cell_idx)
     """
     target_idx = data.get_cells_by_type(target_type)
-    
+
     if len(target_idx) == 0:
         raise ValueError(f"No cells of type '{target_type}' found")
-    
+
     target_coords = data._coordinates[target_idx]
     target_tree = build_kdtree(target_coords)
-    
+
     if from_indices is None:
         query_coords = data._coordinates
     else:
         query_coords = data._coordinates[from_indices]
-    
+
     distances, _ = target_tree.query(query_coords, k=1)
     return np.asarray(distances)
 
 
 def distance_to_nearest_different_type(
-    data: 'SpatialTissueData'
+    data: SpatialTissueData
 ) -> np.ndarray:
     """
     Compute distance from each cell to nearest cell of a different type.
@@ -458,29 +460,29 @@ def distance_to_nearest_different_type(
     """
     n_cells = data.n_cells
     distances = np.full(n_cells, np.inf)
-    
+
     for cell_type in data.cell_types_unique:
         # Get indices of this type and other types
         this_type_idx = data.get_cells_by_type(cell_type)
         other_idx = np.where(data._cell_types != cell_type)[0]
-        
+
         if len(other_idx) == 0:
             continue
-        
+
         # Build tree for other types
         other_tree = build_kdtree(data._coordinates[other_idx])
-        
+
         # Query from this type to others
         this_coords = data._coordinates[this_type_idx]
         dists, _ = other_tree.query(this_coords, k=1)
-        
+
         distances[this_type_idx] = dists
-    
+
     return distances
 
 
 def distance_matrix_by_type(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     metric: str = 'mean'
 ) -> Dict[Tuple[str, str], float]:
     """
@@ -510,21 +512,21 @@ def distance_matrix_by_type(
         'min': np.min,
         'max': np.max,
     }.get(metric)
-    
+
     if agg_func is None:
         raise ValueError(f"Unknown metric: {metric}. Use mean, median, min, max.")
-    
+
     result = {}
     cell_types = data.cell_types_unique
-    
+
     for type_a in cell_types:
         idx_a = data.get_cells_by_type(type_a)
         coords_a = data._coordinates[idx_a]
-        
+
         for type_b in cell_types:
             idx_b = data.get_cells_by_type(type_b)
             coords_b = data._coordinates[idx_b]
-            
+
             if type_a == type_b:
                 # Exclude self-distances
                 if len(idx_a) > 1:
@@ -535,7 +537,7 @@ def distance_matrix_by_type(
             else:
                 dists = cdist(coords_a, coords_b)
                 result[(type_a, type_b)] = float(agg_func(dists))
-    
+
     return result
 
 
@@ -560,7 +562,7 @@ def centroid(coordinates: np.ndarray) -> np.ndarray:
     return np.mean(coordinates, axis=0)
 
 
-def centroid_by_type(data: 'SpatialTissueData') -> Dict[str, np.ndarray]:
+def centroid_by_type(data: SpatialTissueData) -> Dict[str, np.ndarray]:
     """
     Compute centroid for each cell type.
 
@@ -620,12 +622,12 @@ def convex_hull_area(coordinates: np.ndarray) -> float:
     Requires at least 3 non-collinear points.
     """
     from scipy.spatial import ConvexHull
-    
+
     if coordinates.shape[1] != 2:
         raise ValueError("convex_hull_area requires 2D coordinates")
     if coordinates.shape[0] < 3:
         return 0.0
-    
+
     try:
         hull = ConvexHull(coordinates)
         return float(hull.volume)  # In 2D, 'volume' is area
@@ -653,7 +655,7 @@ def point_density(
         Point density.
     """
     n_points = len(coordinates)
-    
+
     if method == 'bounding_box':
         min_c, max_c = bounding_box(coordinates)
         ranges = max_c - min_c
@@ -662,7 +664,7 @@ def point_density(
         area = convex_hull_area(coordinates)
     else:
         raise ValueError(f"Unknown method: {method}")
-    
+
     if area == 0:
         return np.inf
     return n_points / area

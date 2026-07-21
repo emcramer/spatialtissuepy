@@ -7,20 +7,18 @@ custom functions added directly to the panel.
 """
 
 from __future__ import annotations
-from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, List, Optional,
-    Tuple, Union
-)
-from dataclasses import dataclass, field
-import json
-import copy
+
 import functools
-import warnings
+import json
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 from .registry import (
-    get_metric, list_metrics, list_categories, MetricInfo,
-    _validate_metric_function, _validate_metric_output,
-    MetricValidationError
+    MetricInfo,
+    _validate_metric_function,
+    _validate_metric_output,
+    get_metric,
+    list_metrics,
 )
 
 if TYPE_CHECKING:
@@ -55,7 +53,7 @@ class PanelMetric:
     alias: Optional[str] = None
     is_inline: bool = False
 
-    def compute(self, data: 'SpatialTissueData') -> Dict[str, float]:
+    def compute(self, data: SpatialTissueData) -> Dict[str, float]:
         """Compute this metric on data."""
         return self.metric_info(data, **self.params)
 
@@ -137,7 +135,7 @@ class StatisticsPanel:
         metric_name: str,
         alias: Optional[str] = None,
         **params
-    ) -> 'StatisticsPanel':
+    ) -> StatisticsPanel:
         """
         Add a registered metric to the panel.
 
@@ -193,7 +191,7 @@ class StatisticsPanel:
         description: str = "",
         validate: bool = True,
         **params
-    ) -> 'StatisticsPanel':
+    ) -> StatisticsPanel:
         """
         Add a custom function directly to this panel.
 
@@ -289,7 +287,7 @@ class StatisticsPanel:
 
         # Create wrapped function with output validation
         @functools.wraps(fn)
-        def validated_fn(data: 'SpatialTissueData', **kwargs) -> Dict[str, float]:
+        def validated_fn(data: SpatialTissueData, **kwargs) -> Dict[str, float]:
             merged_params = {**params, **kwargs}
             result = fn(data, **merged_params)
             return _validate_metric_output(result, name)
@@ -323,7 +321,7 @@ class StatisticsPanel:
         self,
         category: Optional[str] = None,
         include_custom: bool = True
-    ) -> 'StatisticsPanel':
+    ) -> StatisticsPanel:
         """
         Add all registered metrics, optionally filtered by category.
 
@@ -344,7 +342,7 @@ class StatisticsPanel:
                 self.add(name)
         return self
 
-    def remove(self, metric_name: str) -> 'StatisticsPanel':
+    def remove(self, metric_name: str) -> StatisticsPanel:
         """
         Remove a metric from the panel.
 
@@ -365,7 +363,7 @@ class StatisticsPanel:
         self._metric_names.discard(metric_name)
         return self
 
-    def clear(self) -> 'StatisticsPanel':
+    def clear(self) -> StatisticsPanel:
         """Remove all metrics from the panel."""
         self._metrics = []
         self._metric_names = set()
@@ -391,7 +389,7 @@ class StatisticsPanel:
         """Check if entire panel can be serialized to JSON."""
         return not self.has_inline_metrics
 
-    def compute(self, data: 'SpatialTissueData') -> Dict[str, float]:
+    def compute(self, data: SpatialTissueData) -> Dict[str, float]:
         """
         Compute all metrics on data.
 
@@ -464,7 +462,7 @@ class StatisticsPanel:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'StatisticsPanel':
+    def from_dict(cls, config: Dict[str, Any]) -> StatisticsPanel:
         """
         Create panel from dictionary.
 
@@ -505,13 +503,13 @@ class StatisticsPanel:
             json.dump(self.to_dict(), f, indent=2)
 
     @classmethod
-    def from_json(cls, filepath: str) -> 'StatisticsPanel':
+    def from_json(cls, filepath: str) -> StatisticsPanel:
         """Load panel from JSON file."""
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             config = json.load(f)
         return cls.from_dict(config)
 
-    def copy(self) -> 'StatisticsPanel':
+    def copy(self) -> StatisticsPanel:
         """
         Create a copy of this panel.
 

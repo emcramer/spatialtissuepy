@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from fastmcp import FastMCP
@@ -73,7 +73,7 @@ class MultiSampleResult(BaseModel):
     feature_names: List[str]
 
 
-def register_tools(mcp: "FastMCP") -> None:
+def register_tools(mcp: FastMCP) -> None:
     """Register summary tools with the MCP server."""
 
     @mcp.tool()
@@ -105,6 +105,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Information about the created panel.
         """
         from spatialtissuepy.summary import StatisticsPanel, load_panel
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -189,7 +190,7 @@ def register_tools(mcp: "FastMCP") -> None:
         MetricsList
             Available metrics and categories.
         """
-        from spatialtissuepy.summary import list_metrics, list_categories, get_metric
+        from spatialtissuepy.summary import get_metric, list_categories, list_metrics
 
         categories = list_categories()
         all_metrics = list_metrics(category=category)
@@ -242,6 +243,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Computed features as dictionary.
         """
         from spatialtissuepy.summary import SpatialSummary
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -292,6 +294,7 @@ def register_tools(mcp: "FastMCP") -> None:
         # summary_compute() tool -- FastMCP wraps @mcp.tool() functions in
         # a FunctionTool object that is not directly callable.
         from spatialtissuepy.summary import SpatialSummary
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -334,6 +337,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Feature array and names.
         """
         from spatialtissuepy.summary import SpatialSummary
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -382,6 +386,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Summary of computed features.
         """
         from spatialtissuepy.summary import MultiSampleSummary
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -441,7 +446,8 @@ def register_tools(mcp: "FastMCP") -> None:
             DataFrame-like structure with samples as rows.
         """
         from spatialtissuepy.summary import MultiSampleSummary
-        from ..server import get_session_manager, get_serializer
+
+        from ..server import get_serializer, get_session_manager
 
         session_mgr = get_session_manager()
         serializer = get_serializer()

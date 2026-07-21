@@ -24,16 +24,16 @@ Example
 ...     colocalization_quotient,
 ...     detect_hotspots,
 ... )
->>> 
+>>>
 >>> # Test for clustering using Ripley's H
 >>> radii = np.linspace(0, 100, 50)
 >>> H = ripleys_h(data.coordinates, radii)
 >>> # H > 0 indicates clustering at that scale
->>> 
+>>>
 >>> # Test co-localization between cell types
 >>> clq = colocalization_quotient(data, 'T_cell', 'Tumor', radius=50)
 >>> # CLQ > 1 indicates attraction, CLQ < 1 indicates repulsion
->>> 
+>>>
 >>> # Find spatial hotspots
 >>> result = detect_hotspots(data, values, radius=50)
 >>> hotspot_cells = result['hotspot_idx']
@@ -47,61 +47,60 @@ References
 """
 
 # Spatial statistics (Ripley's K, etc.)
-from .spatial_stats import (
-    # K-function and variants
-    ripleys_k,
-    ripleys_l,
-    ripleys_h,
-    # Cross-type functions
-    cross_k,
-    cross_l,
-    cross_h,
-    # Nearest-neighbor functions
-    g_function,
-    g_function_cross,
-    f_function,
-    j_function,
-    # Pair correlation
-    pair_correlation_function,
-    # CSR envelope testing
-    csr_envelope,
-    # High-level functions
-    spatial_statistics,
-    cross_type_statistics,
-)
-
 # Co-localization analysis
 from .colocalization import (
+    colocalization_matrix,
     # Co-localization quotient
     colocalization_quotient,
-    colocalization_matrix,
+    gearys_c,
+    morans_i,
+    neighborhood_enrichment_matrix,
     # Neighborhood enrichment
     neighborhood_enrichment_score,
     neighborhood_enrichment_test,
-    neighborhood_enrichment_matrix,
-    # Spatial interaction
-    spatial_interaction_matrix,
     # Spatial autocorrelation
     spatial_cross_correlation,
-    morans_i,
-    gearys_c,
+    # Spatial interaction
+    spatial_interaction_matrix,
 )
 
 # Hotspot detection
 from .hotspots import (
-    # Getis-Ord statistics
-    getis_ord_gi_star,
-    getis_ord_gi,
-    # Local Moran's I
-    local_morans_i,
+    cell_type_hotspots,
     # Detection functions
     detect_hotspots,
-    cell_type_hotspots,
-    marker_hotspots,
+    getis_ord_gi,
+    # Getis-Ord statistics
+    getis_ord_gi_star,
+    hotspot_regions,
     # Statistics and regions
     hotspot_statistics,
-    hotspot_regions,
     hotspot_summary_by_type,
+    # Local Moran's I
+    local_morans_i,
+    marker_hotspots,
+)
+from .spatial_stats import (
+    cross_h,
+    # Cross-type functions
+    cross_k,
+    cross_l,
+    cross_type_statistics,
+    # CSR envelope testing
+    csr_envelope,
+    f_function,
+    # Nearest-neighbor functions
+    g_function,
+    g_function_cross,
+    j_function,
+    # Pair correlation
+    pair_correlation_function,
+    ripleys_h,
+    # K-function and variants
+    ripleys_k,
+    ripleys_l,
+    # High-level functions
+    spatial_statistics,
 )
 
 __all__ = [

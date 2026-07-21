@@ -7,21 +7,28 @@ visualizations.
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 
 from .config import (
-    get_axes, get_cell_type_colors, get_sequential_cmap,
-    despine, add_scalebar, _check_matplotlib
+    _check_matplotlib,
+    add_scalebar,
+    despine,
+    get_axes,
+    get_cell_type_colors,
+    get_sequential_cmap,
 )
 
 if TYPE_CHECKING:
-    from spatialtissuepy.core import SpatialTissueData
     import matplotlib.pyplot as plt
+
+    from spatialtissuepy.core import SpatialTissueData
 
 
 def plot_spatial_scatter(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     color_by: str = 'cell_type',
     marker: Optional[str] = None,
     size: float = 5,
@@ -36,12 +43,12 @@ def plot_spatial_scatter(
     xlabel: str = 'X (µm)',
     ylabel: str = 'Y (µm)',
     scalebar: Optional[float] = None,
-    ax: Optional['plt.Axes'] = None,
+    ax: Optional[plt.Axes] = None,
     **kwargs
-) -> 'plt.Axes':
+) -> plt.Axes:
     """
     Basic spatial scatter plot of cells.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
@@ -74,43 +81,43 @@ def plot_spatial_scatter(
         Matplotlib axes. If None, creates new figure.
     **kwargs
         Additional arguments to scatter().
-        
+
     Returns
     -------
     plt.Axes
         Matplotlib axes with the plot.
-        
+
     Examples
     --------
     >>> # Color by cell type
     >>> plot_spatial_scatter(data, color_by='cell_type')
-    >>> 
+    >>>
     >>> # Color by marker expression
     >>> plot_spatial_scatter(data, marker='Ki67', cmap='magma')
-    >>> 
+    >>>
     >>> # Custom colors
     >>> colors = {'Tumor': 'red', 'T_cell': 'blue'}
     >>> plot_spatial_scatter(data, colors=colors)
     """
     _check_matplotlib()
     import matplotlib.pyplot as plt
-    
+
     ax = get_axes(ax)
-    
+
     coords = data._coordinates
-    
+
     # Determine coloring
     if marker is not None:
         color_by = 'marker'
-        
+
     if color_by == 'cell_type':
         # Categorical coloring by cell type
         cell_types = data._cell_types
         unique_types = data.cell_types_unique
-        
+
         if colors is None:
             colors = get_cell_type_colors(list(unique_types))
-        
+
         for ct in unique_types:
             mask = cell_types == ct
             ax.scatter(
@@ -121,20 +128,20 @@ def plot_spatial_scatter(
                 label=ct,
                 **kwargs
             )
-        
+
         if show_legend:
             ax.legend(
                 bbox_to_anchor=(1.02, 1), loc='upper left',
                 frameon=False, markerscale=2
             )
-            
+
     elif color_by == 'marker' and marker is not None:
         # Continuous coloring by marker
         if data.markers is None or marker not in data.markers.columns:
             raise ValueError(f"Marker '{marker}' not found in data")
-        
+
         values = data.markers[marker].values
-        
+
         scatter = ax.scatter(
             coords[:, 0], coords[:, 1],
             c=values,
@@ -145,19 +152,19 @@ def plot_spatial_scatter(
             vmax=vmax,
             **kwargs
         )
-        
+
         if show_colorbar:
             plt.colorbar(scatter, ax=ax, label=marker)
-            
+
     elif color_by == 'density':
         # Color by local density
         from scipy.spatial import cKDTree
         tree = cKDTree(coords)
-        
+
         # Count neighbors within adaptive radius
         radius = np.sqrt((coords[:, 0].ptp() * coords[:, 1].ptp()) / len(coords)) * 2
         counts = np.array([len(tree.query_ball_point(c, radius)) for c in coords])
-        
+
         scatter = ax.scatter(
             coords[:, 0], coords[:, 1],
             c=counts,
@@ -166,10 +173,10 @@ def plot_spatial_scatter(
             cmap=get_sequential_cmap('density'),
             **kwargs
         )
-        
+
         if show_colorbar:
             plt.colorbar(scatter, ax=ax, label='Local density')
-            
+
     else:
         # Single color
         ax.scatter(
@@ -178,24 +185,24 @@ def plot_spatial_scatter(
             alpha=alpha,
             **kwargs
         )
-    
+
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_aspect('equal')
-    
+
     if title:
         ax.set_title(title)
-    
+
     if scalebar is not None:
         add_scalebar(ax, scalebar)
-    
+
     despine(ax)
-    
+
     return ax
 
 
 def plot_cell_types(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     cell_types: Optional[List[str]] = None,
     colors: Optional[Dict[str, str]] = None,
     size: float = 5,
@@ -203,10 +210,10 @@ def plot_cell_types(
     ncols: int = 3,
     figsize_per_panel: Tuple[float, float] = (4, 4),
     **kwargs
-) -> 'plt.Figure':
+) -> plt.Figure:
     """
     Create faceted plot with one panel per cell type.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
@@ -225,7 +232,7 @@ def plot_cell_types(
         Size of each panel.
     **kwargs
         Additional arguments to scatter().
-        
+
     Returns
     -------
     plt.Figure
@@ -233,37 +240,37 @@ def plot_cell_types(
     """
     _check_matplotlib()
     import matplotlib.pyplot as plt
-    
+
     if cell_types is None:
         cell_types = list(data.cell_types_unique)
-    
+
     n_types = len(cell_types)
     nrows = int(np.ceil(n_types / ncols))
-    
+
     if colors is None:
         colors = get_cell_type_colors(cell_types)
-    
+
     fig, axes = plt.subplots(
         nrows, ncols,
         figsize=(figsize_per_panel[0] * ncols, figsize_per_panel[1] * nrows),
         squeeze=False
     )
-    
+
     coords = data._coordinates
     all_types = data._cell_types
-    
+
     for idx, ct in enumerate(cell_types):
         row = idx // ncols
         col = idx % ncols
         ax = axes[row, col]
-        
+
         # Plot background (other cells)
         mask_other = all_types != ct
         ax.scatter(
             coords[mask_other, 0], coords[mask_other, 1],
             c='#e0e0e0', s=size * 0.5, alpha=0.3, rasterized=True
         )
-        
+
         # Plot highlighted cell type
         mask = all_types == ct
         n_cells = np.sum(mask)
@@ -272,26 +279,26 @@ def plot_cell_types(
             c=colors.get(ct, '#1f77b4'), s=size, alpha=alpha,
             label=f'{ct} (n={n_cells})', rasterized=True, **kwargs
         )
-        
+
         ax.set_title(f'{ct} (n={n_cells})')
         ax.set_aspect('equal')
         ax.set_xticks([])
         ax.set_yticks([])
         despine(ax, left=True, bottom=True)
-    
+
     # Hide empty panels
     for idx in range(n_types, nrows * ncols):
         row = idx // ncols
         col = idx % ncols
         axes[row, col].set_visible(False)
-    
+
     fig.tight_layout()
-    
+
     return fig
 
 
 def plot_marker_expression(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     markers: List[str],
     ncols: int = 3,
     cmap: str = 'magma',
@@ -300,10 +307,10 @@ def plot_marker_expression(
     vmax_percentile: float = 99,
     figsize_per_panel: Tuple[float, float] = (4, 4),
     **kwargs
-) -> 'plt.Figure':
+) -> plt.Figure:
     """
     Create faceted plot of marker expression.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
@@ -322,7 +329,7 @@ def plot_marker_expression(
         Size of each panel.
     **kwargs
         Additional arguments to scatter().
-        
+
     Returns
     -------
     plt.Figure
@@ -330,61 +337,61 @@ def plot_marker_expression(
     """
     _check_matplotlib()
     import matplotlib.pyplot as plt
-    
+
     if data.markers is None:
         raise ValueError("Data has no markers")
-    
+
     n_markers = len(markers)
     nrows = int(np.ceil(n_markers / ncols))
-    
+
     fig, axes = plt.subplots(
         nrows, ncols,
         figsize=(figsize_per_panel[0] * ncols, figsize_per_panel[1] * nrows),
         squeeze=False
     )
-    
+
     coords = data._coordinates
-    
+
     for idx, marker in enumerate(markers):
         row = idx // ncols
         col = idx % ncols
         ax = axes[row, col]
-        
+
         if marker not in data.markers.columns:
             ax.text(0.5, 0.5, f'{marker}\nnot found', ha='center', va='center')
             ax.set_title(marker)
             continue
-        
+
         values = data.markers[marker].values
         vmin = np.percentile(values, vmin_percentile)
         vmax = np.percentile(values, vmax_percentile)
-        
+
         scatter = ax.scatter(
             coords[:, 0], coords[:, 1],
             c=values, s=size, cmap=cmap,
             vmin=vmin, vmax=vmax, rasterized=True, **kwargs
         )
-        
+
         ax.set_title(marker)
         ax.set_aspect('equal')
         ax.set_xticks([])
         ax.set_yticks([])
         plt.colorbar(scatter, ax=ax, shrink=0.8)
         despine(ax, left=True, bottom=True)
-    
+
     # Hide empty panels
     for idx in range(n_markers, nrows * ncols):
         row = idx // ncols
         col = idx % ncols
         axes[row, col].set_visible(False)
-    
+
     fig.tight_layout()
-    
+
     return fig
 
 
 def plot_density_map(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     cell_type: Optional[str] = None,
     method: str = 'kde',
     bandwidth: Optional[float] = None,
@@ -393,12 +400,12 @@ def plot_density_map(
     show_points: bool = False,
     point_size: float = 1,
     point_alpha: float = 0.3,
-    ax: Optional['plt.Axes'] = None,
+    ax: Optional[plt.Axes] = None,
     **kwargs
-) -> 'plt.Axes':
+) -> plt.Axes:
     """
     Plot cell density map.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
@@ -421,7 +428,7 @@ def plot_density_map(
         Matplotlib axes.
     **kwargs
         Additional arguments to contourf() or imshow().
-        
+
     Returns
     -------
     plt.Axes
@@ -430,9 +437,9 @@ def plot_density_map(
     _check_matplotlib()
     import matplotlib.pyplot as plt
     from scipy import stats
-    
+
     ax = get_axes(ax)
-    
+
     # Get coordinates
     if cell_type is not None:
         mask = data._cell_types == cell_type
@@ -441,68 +448,68 @@ def plot_density_map(
     else:
         coords = data._coordinates
         title_suffix = ''
-    
+
     if len(coords) < 10:
         ax.text(0.5, 0.5, 'Not enough cells', ha='center', va='center')
         return ax
-    
+
     # Create grid
     bounds = data.bounds
     x_grid = np.linspace(bounds['x'][0], bounds['x'][1], resolution)
     y_grid = np.linspace(bounds['y'][0], bounds['y'][1], resolution)
     xx, yy = np.meshgrid(x_grid, y_grid)
-    
+
     if method == 'kde':
         # Kernel density estimation
         if bandwidth is None:
             bandwidth = np.sqrt(coords[:, 0].var() + coords[:, 1].var()) / 10
-        
+
         kernel = stats.gaussian_kde(coords.T, bw_method=bandwidth)
         positions = np.vstack([xx.ravel(), yy.ravel()])
         density = kernel(positions).reshape(xx.shape)
-        
+
     elif method == 'histogram':
         density, _, _ = np.histogram2d(
             coords[:, 0], coords[:, 1],
             bins=[x_grid, y_grid]
         )
         density = density.T  # Transpose for correct orientation
-        
+
     else:
         raise ValueError(f"Unknown method: {method}")
-    
+
     # Plot density
     im = ax.contourf(xx, yy, density, levels=20, cmap=cmap, **kwargs)
     plt.colorbar(im, ax=ax, label='Density')
-    
+
     # Overlay points
     if show_points:
         ax.scatter(
             coords[:, 0], coords[:, 1],
             s=point_size, c='white', alpha=point_alpha, rasterized=True
         )
-    
+
     ax.set_xlabel('X (µm)')
     ax.set_ylabel('Y (µm)')
     ax.set_title(f'Cell Density{title_suffix}')
     ax.set_aspect('equal')
-    
+
     return ax
 
 
 def plot_voronoi(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     color_by: str = 'cell_type',
     colors: Optional[Dict[str, str]] = None,
     edge_color: str = 'black',
     edge_width: float = 0.1,
     alpha: float = 0.7,
-    ax: Optional['plt.Axes'] = None,
+    ax: Optional[plt.Axes] = None,
     **kwargs
-) -> 'plt.Axes':
+) -> plt.Axes:
     """
     Plot Voronoi tessellation of cells.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
@@ -521,57 +528,56 @@ def plot_voronoi(
         Matplotlib axes.
     **kwargs
         Additional arguments to PolyCollection.
-        
+
     Returns
     -------
     plt.Axes
         Matplotlib axes with the plot.
     """
     _check_matplotlib()
-    import matplotlib.pyplot as plt
     from matplotlib.collections import PolyCollection
     from scipy.spatial import Voronoi
-    
+
     ax = get_axes(ax)
-    
+
     coords = data._coordinates[:, :2]  # 2D only
-    
+
     # Compute Voronoi
     vor = Voronoi(coords)
-    
+
     if colors is None and color_by == 'cell_type':
         colors = get_cell_type_colors(list(data.cell_types_unique))
-    
+
     # Get cell colors
     if color_by == 'cell_type':
         cell_colors = [colors.get(ct, '#888888') for ct in data._cell_types]
     else:
         cell_colors = ['#1f77b4'] * data.n_cells
-    
+
     # Create polygons for finite regions
     polygons = []
     poly_colors = []
-    
+
     bounds = data.bounds
-    
+
     for idx, region_idx in enumerate(vor.point_region):
         region = vor.regions[region_idx]
-        
+
         if -1 in region or len(region) == 0:
             continue
-        
+
         vertices = vor.vertices[region]
-        
+
         # Clip to bounds
-        if (np.any(vertices[:, 0] < bounds['x'][0] - 100) or 
+        if (np.any(vertices[:, 0] < bounds['x'][0] - 100) or
             np.any(vertices[:, 0] > bounds['x'][1] + 100) or
-            np.any(vertices[:, 1] < bounds['y'][0] - 100) or 
+            np.any(vertices[:, 1] < bounds['y'][0] - 100) or
             np.any(vertices[:, 1] > bounds['y'][1] + 100)):
             continue
-        
+
         polygons.append(vertices)
         poly_colors.append(cell_colors[idx])
-    
+
     # Add polygon collection
     collection = PolyCollection(
         polygons,
@@ -582,30 +588,30 @@ def plot_voronoi(
         **kwargs
     )
     ax.add_collection(collection)
-    
+
     ax.set_xlim(bounds['x'])
     ax.set_ylim(bounds['y'])
     ax.set_xlabel('X (µm)')
     ax.set_ylabel('Y (µm)')
     ax.set_title('Voronoi Tessellation')
     ax.set_aspect('equal')
-    
+
     return ax
 
 
 def plot_spatial_domains(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     domain_labels: np.ndarray,
     colors: Optional[List[str]] = None,
     size: float = 5,
     alpha: float = 0.7,
     show_boundaries: bool = True,
-    ax: Optional['plt.Axes'] = None,
+    ax: Optional[plt.Axes] = None,
     **kwargs
-) -> 'plt.Axes':
+) -> plt.Axes:
     """
     Plot spatial domain assignments.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
@@ -624,25 +630,24 @@ def plot_spatial_domains(
         Matplotlib axes.
     **kwargs
         Additional arguments to scatter().
-        
+
     Returns
     -------
     plt.Axes
         Matplotlib axes with the plot.
     """
     _check_matplotlib()
-    import matplotlib.pyplot as plt
     from .config import get_categorical_palette
-    
+
     ax = get_axes(ax)
-    
+
     coords = data._coordinates
     unique_domains = np.unique(domain_labels[domain_labels >= 0])  # Exclude -1
     n_domains = len(unique_domains)
-    
+
     if colors is None:
         colors = get_categorical_palette(n_domains)
-    
+
     # Plot each domain
     for i, domain in enumerate(unique_domains):
         mask = domain_labels == domain
@@ -651,7 +656,7 @@ def plot_spatial_domains(
             c=colors[i % len(colors)], s=size, alpha=alpha,
             label=f'Domain {domain}', rasterized=True, **kwargs
         )
-    
+
     # Plot unclustered cells
     mask_unclustered = domain_labels < 0
     if np.any(mask_unclustered):
@@ -660,19 +665,19 @@ def plot_spatial_domains(
             c='#cccccc', s=size * 0.5, alpha=0.3,
             label='Unclustered', rasterized=True
         )
-    
+
     ax.set_xlabel('X (µm)')
     ax.set_ylabel('Y (µm)')
     ax.set_title(f'Spatial Domains (n={n_domains})')
     ax.set_aspect('equal')
     ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', frameon=False)
     despine(ax)
-    
+
     return ax
 
 
 def plot_cell_neighborhoods(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     cell_indices: Union[int, List[int]],
     radius: float = 50.0,
     highlight_color: str = 'red',
@@ -681,12 +686,12 @@ def plot_cell_neighborhoods(
     size: float = 20,
     alpha: float = 0.7,
     show_radius: bool = True,
-    ax: Optional['plt.Axes'] = None,
+    ax: Optional[plt.Axes] = None,
     **kwargs
-) -> 'plt.Axes':
+) -> plt.Axes:
     """
     Visualize the neighborhood of specific cells.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
@@ -711,44 +716,43 @@ def plot_cell_neighborhoods(
         Matplotlib axes.
     **kwargs
         Additional arguments to scatter().
-        
+
     Returns
     -------
     plt.Axes
         Matplotlib axes with the plot.
     """
     _check_matplotlib()
-    import matplotlib.pyplot as plt
     from matplotlib.patches import Circle
     from scipy.spatial import cKDTree
-    
+
     ax = get_axes(ax)
-    
+
     if isinstance(cell_indices, int):
         cell_indices = [cell_indices]
-    
+
     coords = data._coordinates
     tree = cKDTree(coords)
-    
+
     # Find all neighbors
     all_neighbors = set()
     for idx in cell_indices:
         neighbors = tree.query_ball_point(coords[idx], radius)
         all_neighbors.update(neighbors)
-    
+
     all_neighbors.discard(set(cell_indices))
-    
+
     # Plot background cells
     background_mask = np.ones(data.n_cells, dtype=bool)
     background_mask[list(all_neighbors)] = False
     for idx in cell_indices:
         background_mask[idx] = False
-    
+
     ax.scatter(
         coords[background_mask, 0], coords[background_mask, 1],
         c=background_color, s=size * 0.3, alpha=0.3, rasterized=True
     )
-    
+
     # Plot neighbors
     neighbor_list = list(all_neighbors)
     if neighbor_list:
@@ -756,7 +760,7 @@ def plot_cell_neighborhoods(
             coords[neighbor_list, 0], coords[neighbor_list, 1],
             c=neighbor_color, s=size, alpha=alpha, label='Neighbors', **kwargs
         )
-    
+
     # Plot focal cells and radius circles
     for idx in cell_indices:
         ax.scatter(
@@ -765,7 +769,7 @@ def plot_cell_neighborhoods(
             edgecolor='black', linewidth=0.5, zorder=10,
             label='Focal cell' if idx == cell_indices[0] else None
         )
-        
+
         if show_radius:
             circle = Circle(
                 (coords[idx, 0], coords[idx, 1]), radius,
@@ -773,12 +777,12 @@ def plot_cell_neighborhoods(
                 linewidth=1.5, alpha=0.7
             )
             ax.add_patch(circle)
-    
+
     ax.set_xlabel('X (µm)')
     ax.set_ylabel('Y (µm)')
     ax.set_title(f'Cell Neighborhood (r={radius})')
     ax.set_aspect('equal')
     ax.legend(frameon=False)
     despine(ax)
-    
+
     return ax

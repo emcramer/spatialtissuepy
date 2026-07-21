@@ -6,8 +6,10 @@ spatial cell data from multiplexed imaging experiments.
 """
 
 from __future__ import annotations
-from typing import Optional, Dict, Any, List, Union, Iterator, Tuple
+
 from pathlib import Path
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+
 import numpy as np
 import pandas as pd
 from scipy.spatial import cKDTree
@@ -15,12 +17,12 @@ from scipy.spatial import cKDTree
 from spatialtissuepy.core.cell import Cell
 from spatialtissuepy.core.validators import (
     ValidationError,
-    validate_coordinates,
     validate_cell_types,
-    validate_sample_ids,
+    validate_coordinates,
     validate_marker_data,
     validate_metadata,
     validate_positive_number,
+    validate_sample_ids,
 )
 
 
@@ -246,7 +248,7 @@ class SpatialTissueData:
         sample_col: Optional[str] = None,
         marker_cols: Optional[List[str]] = None,
         **read_csv_kwargs
-    ) -> 'SpatialTissueData':
+    ) -> SpatialTissueData:
         """
         Load spatial data from a CSV file.
 
@@ -348,7 +350,7 @@ class SpatialTissueData:
         celltype_col: str = 'cell_type',
         sample_col: Optional[str] = None,
         marker_cols: Optional[List[str]] = None
-    ) -> 'SpatialTissueData':
+    ) -> SpatialTissueData:
         """
         Create SpatialTissueData from a pandas DataFrame.
 
@@ -468,7 +470,7 @@ class SpatialTissueData:
         indices: Optional[np.ndarray] = None,
         cell_types: Optional[List[str]] = None,
         sample_ids: Optional[List[str]] = None
-    ) -> 'SpatialTissueData':
+    ) -> SpatialTissueData:
         """
         Create a subset of the data.
 
@@ -511,7 +513,7 @@ class SpatialTissueData:
             metadata=self._metadata.copy()
         )
 
-    def subset_sample(self, sample_id: str) -> 'SpatialTissueData':
+    def subset_sample(self, sample_id: str) -> SpatialTissueData:
         """
         Alias for subset(sample_ids=[sample_id]) for backward compatibility.
         """
@@ -529,7 +531,7 @@ class SpatialTissueData:
         for i in range(self.n_cells):
             yield self.get_cell(i)
 
-    def iter_samples(self) -> Iterator[Tuple[str, 'SpatialTissueData']]:
+    def iter_samples(self) -> Iterator[Tuple[str, SpatialTissueData]]:
         """
         Iterate over samples in a multi-sample dataset.
 
@@ -653,7 +655,7 @@ class SpatialTissueData:
         self,
         neighborhoods: np.ndarray,
         params: Optional[Dict] = None
-    ) -> 'SpatialTissueData':
+    ) -> SpatialTissueData:
         """
         Add precomputed neighborhood data.
 
@@ -714,7 +716,7 @@ class SpatialTissueData:
 
     def __str__(self) -> str:
         lines = [
-            f"SpatialTissueData",
+            "SpatialTissueData",
             f"  Cells: {self.n_cells}",
             f"  Dimensions: {self.n_dims}D",
             f"  Cell types: {self.n_cell_types}",

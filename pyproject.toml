@@ -8,7 +8,7 @@ version = "0.2.0"
 description = "Spatial analysis tools for tissue biology and multiplexed imaging"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 authors = [
     {name = "spatialtissuepy developers"}
 ]
@@ -32,11 +32,10 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Topic :: Scientific/Engineering :: Image Processing",
 ]
@@ -107,12 +106,17 @@ addopts = "-v --tb=short"
 
 [tool.black]
 line-length = 88
-target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+target-version = ['py310', 'py311', 'py312', 'py313']
 include = '\.pyi?$'
 
 [tool.ruff]
 line-length = 88
-target-version = "py38"
+target-version = "py310"
+# Tutorial notebooks are prose-first and rely on cross-cell state that ruff
+# reads as undefined names. They are exercised by nbsphinx at docs build time.
+extend-exclude = ["docs/tutorials/*.ipynb", "*/.ipynb_checkpoints/*"]
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -122,10 +126,26 @@ select = [
 ]
 ignore = [
     "E501",  # line too long (handled by black)
+    # Annotation-style modernisations. These are now available on the supported
+    # interpreters, but the codebase uses typing.Dict/List/Optional/Union
+    # consistently across ~1,000 sites. Rewriting them all has no runtime effect
+    # under `from __future__ import annotations` and would conflict with every
+    # in-flight branch. Worth doing as its own dedicated pass, not as a side
+    # effect of raising the Python floor. These four rules must move together:
+    # dropping the typing imports (UP035) while still writing `Dict[...]`
+    # (UP006) would not even import.
+    "UP006",  # non-pep585-annotation (Dict -> dict)
+    "UP007",  # non-pep604-annotation-union (Union[x, y] -> x | y)
+    "UP035",  # deprecated-import (from typing import Dict)
+    "UP045",  # non-pep604-annotation-optional (Optional[x] -> x | None)
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Package __init__ files re-export their public API; the imports are the point.
+"__init__.py" = ["F401"]
+
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true

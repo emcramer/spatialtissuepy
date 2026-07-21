@@ -7,7 +7,7 @@ Please use spatialtissuepy.viz.mapper instead.
 Example migration:
     # Old
     from spatialtissuepy.topology.visualization import plot_mapper_graph
-    
+
     # New (recommended)
     from spatialtissuepy.viz import plot_mapper_graph
 """
@@ -16,17 +16,17 @@ import warnings
 
 # Re-export from viz module for backward compatibility
 from spatialtissuepy.viz.mapper import (
+    create_mapper_report,
+    plot_filter_distribution,
+    plot_mapper_diagnostics,
     plot_mapper_graph,
     plot_mapper_spatial,
-    plot_filter_distribution,
     plot_node_composition,
-    plot_mapper_diagnostics,
-    create_mapper_report,
 )
 
 __all__ = [
     'plot_mapper_graph',
-    'plot_mapper_spatial', 
+    'plot_mapper_spatial',
     'plot_filter_distribution',
     'plot_node_composition',
     'plot_mapper_diagnostics',

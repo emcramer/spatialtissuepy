@@ -5,6 +5,78 @@ All notable changes to spatialtissuepy are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+PhysiCell reader correctness fixes, reported against v0.2.0 by the
+llm-abm-consistency harness (OHSU ChangLab) and reproduced against both their
+PhysiCell 1.14.2 output and this repository's bundled example simulation.
+
+### Fixed
+
+- **Cell matrix orientation is now resolved from the frame's declared variable
+  count** rather than by comparing the matrix dimensions. The old heuristic
+  (`if shape[0] > shape[1]: transpose`) assumed every frame holds more cells
+  than the model has variables, and silently returned transposed garbage for
+  any frame that does not — sparse initial conditions, early time steps, small
+  explants, and simulations approaching extinction. A frame that matches
+  neither orientation now raises `ValueError` instead of returning data. When
+  no labels are available, the old heuristic still applies but emits a
+  `UserWarning` naming the ambiguity.
+- **`PhysiCellTimeStep.to_dataframe()` now honors `include_dead_cells`.** It
+  previously ignored the flag while `n_cells`, `positions`, `to_spatial_data()`
+  and `cell_counts_by_type()` all respected it, so the same object reported
+  different populations depending on the accessor and row indices did not align
+  between `to_dataframe()` and `positions`.
+- **`parse_microenvironment_mat` validates matrix orientation** against the
+  declared substrate count when `substrate_names` is supplied, converting a
+  would-be silent misread into a clear error.
+- **`__version__` is now read from the installed distribution metadata**, so it
+  cannot drift from `pyproject.toml`. It reported `0.1.0` at the `v0.2.0` tag,
+  which misattributed results in downstream provenance capture. A regression
+  test asserts the two agree.
+
+### Added
+
+- **`parse_cells_mat(..., labels=...)`**: derive column positions from the
+  MultiCellDS `<labels>` block that `parse_physicell_xml` already parses. The
+  parsed labels were previously stored at `metadata.extra['custom_labels']` and
+  never read anywhere in the package. Precedence is `index_mapping` >
+  `labels` > the existing row-count autodetect, so behavior is unchanged when
+  labels are not supplied.
+- **`'columns'` key in the `parse_cells_mat` result**: every labelled column,
+  including standard PhysiCell fields absent from the hard-coded index tables
+  (`is_motile`, `migration_speed`) and model-specific custom variables. The
+  return dict was previously a closed set, so anything else the model wrote was
+  unreachable.
+- **`'orientation'` key** reporting the on-disk layout of `raw_data`, either
+  `'variables_x_cells'` or `'cells_x_variables'`.
+- **`expand_cell_labels()` and `declared_variable_count()`** helpers for
+  working with `<labels>` blocks. Vector labels expand as `{name}_x/_y/_z` for
+  `size == 3` and `{name}_0 … {name}_{n-1}` otherwise.
+- **`to_dataframe(extra_columns=True)`** appends every labelled column. Off by
+  default, since a full PhysiCell frame carries 150+ variables.
+- **`to_dataframe(include_dead_cells=...)`** to override the instance attribute
+  per call.
+- Regression tests (`tests/test_physicell_labels.py`, 25 tests) covering label
+  expansion, all four orientation cases, cross-model label isolation, the
+  microenvironment guard, dead-cell filtering, and version consistency.
+
+### Changed
+
+- **`raw_data` from `parse_cells_mat` is now returned exactly as loaded from
+  disk.** It was previously the reoriented matrix, so callers could not use it
+  to recover the truth when the orientation heuristic misfired. Callers relying
+  on the transposed `raw_data` should consult the new `'orientation'` key.
+- `PhysiCellTimeStep._load_cell_data()` and `to_trajectory_dataframe()` now
+  resolve columns from each frame's own XML, so models with differing variable
+  counts parse correctly in the same session.
+
+### Known gaps
+
+- `parse_microenvironment_mat` is implemented and exported but still not wired
+  into `PhysiCellTimeStep` / `PhysiCellSimulation`; substrate fields remain
+  reachable only through the parser. Planned for v0.3.0.
+
 ## [0.2.0] - 2026-06-26
 
 First beta release. This release adds AI agent access via an MCP server, a

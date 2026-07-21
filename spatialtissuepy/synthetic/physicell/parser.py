@@ -7,6 +7,7 @@ extracting cell data, metadata, and microenvironment information.
 
 from __future__ import annotations
 
+import warnings
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
@@ -287,10 +288,119 @@ CELL_DATA_INDICES_LEGACY = {
 }
 
 
+def expand_cell_labels(labels: Dict[int, Tuple[str, int]]) -> Dict[int, str]:
+    """
+    Expand a MultiCellDS ``<labels>`` block into a flat column mapping.
+
+    Vector-valued labels occupy consecutive columns in the cell matrix. A label
+    of ``size == 3`` is expanded to ``{name}_x/_y/_z`` (the convention PhysiCell
+    uses for spatial vectors); any other ``size > 1`` is expanded positionally
+    to ``{name}_0 ... {name}_{size-1}``.
+
+    Parameters
+    ----------
+    labels : dict
+        Mapping of ``{start_index: (name, size)}``, as produced by
+        :func:`parse_physicell_xml` at ``metadata.extra['custom_labels']``.
+
+    Returns
+    -------
+    dict
+        Mapping of ``{column_index: column_name}``.
+
+    Examples
+    --------
+    >>> expand_cell_labels({0: ('ID', 1), 1: ('position', 3)})
+    {0: 'ID', 1: 'position_x', 2: 'position_y', 3: 'position_z'}
+    """
+    expanded: Dict[int, str] = {}
+
+    for start_index, (name, size) in labels.items():
+        if size == 1:
+            expanded[start_index] = name
+        elif size == 3:
+            for offset, axis in enumerate('xyz'):
+                expanded[start_index + offset] = f'{name}_{axis}'
+        else:
+            for offset in range(size):
+                expanded[start_index + offset] = f'{name}_{offset}'
+
+    return expanded
+
+
+def declared_variable_count(labels: Dict[int, Tuple[str, int]]) -> int:
+    """
+    Number of matrix rows implied by a ``<labels>`` block.
+
+    This accounts for the width of the final label, so a trailing vector label
+    is not undercounted the way ``max(labels) + 1`` would be.
+
+    Parameters
+    ----------
+    labels : dict
+        Mapping of ``{start_index: (name, size)}``.
+
+    Returns
+    -------
+    int
+        Expected number of variables (rows) per cell.
+    """
+    return max(index + size for index, (_, size) in labels.items())
+
+
+def _orient_cell_matrix(
+    cell_matrix: np.ndarray,
+    n_expected: Optional[int],
+    mat_path: Path,
+) -> Tuple[np.ndarray, str]:
+    """
+    Normalize a cell matrix to ``(n_variables, n_cells)``.
+
+    When the declared variable count is known, orientation is resolved by
+    matching it against the array shape -- unambiguous even when a frame holds
+    fewer cells than the model has variables. Without it, fall back to the
+    legacy magnitude heuristic and warn, since that assumption silently
+    corrupts small frames.
+
+    Returns
+    -------
+    (np.ndarray, str)
+        The matrix in ``(n_variables, n_cells)`` orientation, and the
+        orientation of the input as loaded from disk.
+    """
+    n_rows, n_cols = cell_matrix.shape
+
+    if n_expected is not None:
+        # Prefer axis 0 as variables, so a square matrix resolves the way
+        # MultiCellDS actually writes it.
+        if n_rows == n_expected:
+            return cell_matrix, 'variables_x_cells'
+        if n_cols == n_expected:
+            return cell_matrix.T, 'cells_x_variables'
+        raise ValueError(
+            f"cell matrix {cell_matrix.shape} matches neither orientation for "
+            f"{n_expected} declared variables in {mat_path}"
+        )
+
+    if n_rows > n_cols:
+        warnings.warn(
+            f"Guessing cell matrix orientation for {mat_path} from its shape "
+            f"{cell_matrix.shape} because no <labels> block was supplied. This "
+            f"is wrong for any frame holding fewer cells than the model has "
+            f"variables. Pass labels= to resolve orientation unambiguously.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return cell_matrix.T, 'cells_x_variables'
+
+    return cell_matrix, 'variables_x_cells'
+
+
 def parse_cells_mat(
     mat_path: Path,
     cell_type_mapping: Optional[Dict[int, str]] = None,
-    index_mapping: Optional[Dict[str, int]] = None
+    index_mapping: Optional[Dict[str, int]] = None,
+    labels: Optional[Dict[int, Tuple[str, int]]] = None,
 ) -> Dict[str, np.ndarray]:
     """
     Parse a PhysiCell cells_physicell.mat file.
@@ -303,6 +413,13 @@ def parse_cells_mat(
         Mapping from cell type IDs to names.
     index_mapping : dict, optional
         Custom row index mapping for different PhysiCell versions.
+    labels : dict, optional
+        The ``<labels>`` block from the frame's XML, as
+        ``{start_index: (name, size)}``. When supplied, column positions and
+        matrix orientation are resolved from the frame's own declaration rather
+        than from a hard-coded table, and every labelled column is returned
+        under ``'columns'``. Precedence for column positions is
+        ``index_mapping`` > ``labels`` > row-count autodetect.
 
     Returns
     -------
@@ -314,8 +431,18 @@ def parse_cells_mat(
         - 'volumes': (n_cells,) array of total volumes
         - 'radii': (n_cells,) array of cell radii
         - 'phases': (n_cells,) array of cell cycle phases
+        - 'dead_flags': (n_cells,) array of dead flags
         - 'ids': (n_cells,) array of cell IDs
-        - 'raw_data': Full matrix from file
+        - 'columns': dict of every labelled column, keyed by name. Empty when
+          no ``labels`` were supplied.
+        - 'raw_data': Full matrix exactly as loaded from disk
+        - 'orientation': layout of ``raw_data``, either ``'variables_x_cells'``
+          or ``'cells_x_variables'``
+
+    Notes
+    -----
+    ``raw_data`` is returned unmodified, so it round-trips to what
+    ``scipy.io.loadmat`` returned; use ``orientation`` to interpret it.
     """
     from scipy.io import loadmat
 
@@ -340,13 +467,10 @@ def parse_cells_mat(
     if cell_matrix is None:
         raise ValueError(f"Could not find cell data in {mat_path}")
 
-    # Ensure cells are columns
-    if cell_matrix.shape[0] > cell_matrix.shape[1]:
-        cell_matrix = cell_matrix.T
+    raw_data = cell_matrix
 
-    n_cells = cell_matrix.shape[1]
-
-    if n_cells == 0:
+    # An empty frame carries no orientation signal; report it as written.
+    if 0 in cell_matrix.shape:
         return {
             'positions': np.empty((0, 3)),
             'cell_types': np.array([], dtype=str),
@@ -354,15 +478,31 @@ def parse_cells_mat(
             'volumes': np.array([]),
             'radii': np.array([]),
             'phases': np.array([], dtype=int),
+            'dead_flags': np.array([], dtype=int),
             'ids': np.array([], dtype=int),
-            'raw_data': cell_matrix,
+            'columns': {},
+            'raw_data': raw_data,
+            'orientation': 'variables_x_cells',
         }
 
-    # Use provided or default index mapping
+    label_columns = expand_cell_labels(labels) if labels else {}
+    n_expected = declared_variable_count(labels) if labels else None
+
+    cell_matrix, orientation = _orient_cell_matrix(
+        cell_matrix, n_expected, mat_path
+    )
+
+    n_cells = cell_matrix.shape[1]
+
+    # Column positions: explicit index_mapping wins, then the frame's own
+    # labels, then the legacy row-count autodetect.
     if index_mapping is None:
-        # Auto-detect based on matrix shape
-        # PhysiCell 1.10+ typically has 150+ rows per cell
-        if cell_matrix.shape[0] >= 30:
+        if label_columns:
+            index_mapping = {
+                name: index for index, name in label_columns.items()
+            }
+        elif cell_matrix.shape[0] >= 30:
+            # PhysiCell 1.10+ typically has 150+ rows per cell
             index_mapping = CELL_DATA_INDICES_V2
         else:
             index_mapping = CELL_DATA_INDICES_LEGACY
@@ -423,6 +563,14 @@ def parse_cells_mat(
         # Fall back to inferring from phase code
         dead_flags = np.array([1 if p >= 100 else 0 for p in phases])
 
+    # Every labelled column, including ones with no entry in the index tables
+    # (is_motile, migration_speed) and model-specific custom variables.
+    columns = {
+        name: cell_matrix[index, :]
+        for index, name in sorted(label_columns.items())
+        if index < cell_matrix.shape[0]
+    }
+
     return {
         'positions': positions,
         'cell_types': cell_types,
@@ -432,7 +580,9 @@ def parse_cells_mat(
         'phases': phases,
         'dead_flags': dead_flags,
         'ids': ids,
-        'raw_data': cell_matrix,
+        'columns': columns,
+        'raw_data': raw_data,
+        'orientation': orientation,
     }
 
 
@@ -479,7 +629,23 @@ def parse_microenvironment_mat(
     if me_matrix is None:
         raise ValueError(f"Could not find microenvironment data in {mat_path}")
 
-    # Structure: rows 0-2 are x,y,z; row 3 is volume; rows 4+ are substrates
+    raw_data = me_matrix
+
+    # Structure: rows 0-2 are x,y,z; row 3 is volume; rows 4+ are substrates.
+    # PhysiCell always writes (4 + n_substrates, n_voxels), but validate it
+    # rather than assume -- an unchecked transpose here is silent corruption.
+    if substrate_names is not None:
+        n_expected = 4 + len(substrate_names)
+        if me_matrix.shape[0] != n_expected:
+            if me_matrix.shape[1] == n_expected:
+                me_matrix = me_matrix.T
+            else:
+                raise ValueError(
+                    f"microenvironment matrix {me_matrix.shape} matches neither "
+                    f"orientation for {len(substrate_names)} declared substrates "
+                    f"in {mat_path}"
+                )
+
     voxel_positions = me_matrix[:3, :].T  # (n_voxels, 3)
 
     # Extract substrate concentrations
@@ -495,7 +661,7 @@ def parse_microenvironment_mat(
     return {
         'voxel_positions': voxel_positions,
         'concentrations': concentrations,
-        'raw_data': me_matrix,
+        'raw_data': raw_data,
     }
 
 

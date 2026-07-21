@@ -21,7 +21,16 @@ viz : Visualization suite
 io : Input/output utilities
 """
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
+
+try:
+    # Single source of truth: the version declared in pyproject.toml, as
+    # recorded in the installed distribution metadata.
+    __version__ = _pkg_version("spatialtissuepy")
+except PackageNotFoundError:  # pragma: no cover - running from a source tree
+    __version__ = "0.0.0.dev0"
+
 __author__ = "spatialtissuepy developers"
 
 from spatialtissuepy.core.spatial_data import SpatialTissueData

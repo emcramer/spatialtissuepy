@@ -8,6 +8,7 @@ simulation data and converting it to SpatialTissueData for analysis.
 from __future__ import annotations
 
 import re
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
@@ -74,9 +75,21 @@ class PhysiCellTimeStep(ABMTimeStep):
     def _load_cell_data(self) -> Dict[str, np.ndarray]:
         """Load cell data from MAT file (cached)."""
         if self._cell_data is None:
+            # Resolve columns and matrix orientation from this frame's own
+            # <labels> block, so models with differing variable counts each
+            # parse against their own declaration.
+            labels = None
+            try:
+                labels = self._load_metadata().extra.get('custom_labels') or None
+            except (OSError, ET.ParseError):
+                # No readable XML: parse_cells_mat falls back to its row-count
+                # heuristic and warns.
+                pass
+
             self._cell_data = parse_cells_mat(
                 self.cells_mat_path,
-                self.cell_type_mapping
+                self.cell_type_mapping,
+                labels=labels,
             )
         return self._cell_data
 
@@ -180,35 +193,72 @@ class PhysiCellTimeStep(ABMTimeStep):
             metadata=extra_metadata,
         )
 
-    def to_dataframe(self) -> pd.DataFrame:
+    def to_dataframe(
+        self,
+        include_dead_cells: Optional[bool] = None,
+        extra_columns: bool = False,
+    ) -> pd.DataFrame:
         """
         Convert cell data to a pandas DataFrame.
+
+        Parameters
+        ----------
+        include_dead_cells : bool, optional
+            Whether to include dead cells. Defaults to the instance attribute,
+            so rows stay aligned with ``positions`` and ``to_spatial_data()``.
+            Pass ``True`` to recover the unfiltered frame.
+        extra_columns : bool, default False
+            Append every labelled column from the frame's XML, including
+            standard fields absent from the index tables (``is_motile``,
+            ``migration_speed``) and model-specific custom variables. Off by
+            default because a full PhysiCell frame carries 150+ variables.
 
         Returns
         -------
         pd.DataFrame
-            DataFrame with cell properties.
+            DataFrame with cell properties, in the same row order as
+            ``positions``.
         """
         data = self._load_cell_data()
 
+        if include_dead_cells is None:
+            include_dead_cells = self.include_dead_cells
+
+        if include_dead_cells:
+            mask = np.ones(len(data['cell_types']), dtype=bool)
+        else:
+            mask = data['dead_flags'] == 0
+
         df = pd.DataFrame({
-            'cell_id': data['ids'],
-            'x': data['positions'][:, 0],
-            'y': data['positions'][:, 1],
-            'z': data['positions'][:, 2],
-            'cell_type': data['cell_types'],
-            'cell_type_id': data['cell_type_ids'],
-            'volume': data['volumes'],
-            'radius': data['radii'],
-            'phase': data['phases'],
-            'is_dead': data['dead_flags'].astype(bool),
-            'is_alive': ~data['dead_flags'].astype(bool),
+            'cell_id': data['ids'][mask],
+            'x': data['positions'][mask, 0],
+            'y': data['positions'][mask, 1],
+            'z': data['positions'][mask, 2],
+            'cell_type': data['cell_types'][mask],
+            'cell_type_id': data['cell_type_ids'][mask],
+            'volume': data['volumes'][mask],
+            'radius': data['radii'][mask],
+            'phase': data['phases'][mask],
+            'is_dead': data['dead_flags'][mask].astype(bool),
+            'is_alive': ~data['dead_flags'][mask].astype(bool),
         })
 
-        df['time'] = self.time
-        df['time_index'] = self.time_index
+        trailing = pd.DataFrame({
+            'time': np.full(len(df), self.time),
+            'time_index': np.full(len(df), self.time_index),
+        })
 
-        return df
+        if extra_columns:
+            # Build in one concat; a full PhysiCell frame adds 150+ columns and
+            # inserting them one at a time fragments the frame badly.
+            extra = pd.DataFrame({
+                name: values[mask]
+                for name, values in data['columns'].items()
+                if name not in df.columns
+            })
+            return pd.concat([df, extra, trailing], axis=1)
+
+        return pd.concat([df, trailing], axis=1)
 
     def cell_counts_by_type(self) -> Dict[str, int]:
         """Get cell counts by type."""

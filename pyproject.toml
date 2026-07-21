@@ -113,6 +113,11 @@ include = '\.pyi?$'
 [tool.ruff]
 line-length = 88
 target-version = "py38"
+# Tutorial notebooks are prose-first and rely on cross-cell state that ruff
+# reads as undefined names. They are exercised by nbsphinx at docs build time.
+extend-exclude = ["docs/tutorials/*.ipynb", "*/.ipynb_checkpoints/*"]
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -122,7 +127,18 @@ select = [
 ]
 ignore = [
     "E501",  # line too long (handled by black)
+    # Annotation-style modernisations. The package still supports Python 3.8,
+    # and rewriting ~950 annotations to PEP 585/604 form is churn with no
+    # runtime effect under `from __future__ import annotations`. Revisit when
+    # the 3.8 floor is dropped.
+    "UP006",  # non-pep585-annotation (Dict -> dict)
+    "UP007",  # non-pep604-annotation-union (Union[x, y] -> x | y)
+    "UP045",  # non-pep604-annotation-optional (Optional[x] -> x | None)
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Package __init__ files re-export their public API; the imports are the point.
+"__init__.py" = ["F401"]
 
 [tool.mypy]
 python_version = "3.8"

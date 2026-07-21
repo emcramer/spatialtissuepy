@@ -18,7 +18,7 @@ Tools (10 total):
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -149,7 +149,9 @@ def _compute_ripleys(
 ) -> RipleysResult:
     """Internal helper to compute Ripley's K/L/H functions."""
     import numpy as np
-    from spatialtissuepy.statistics import ripleys_k, ripleys_l, ripleys_h
+
+    from spatialtissuepy.statistics import ripleys_h, ripleys_k, ripleys_l
+
     from ..server import get_session_manager
 
     session_mgr = get_session_manager()
@@ -221,7 +223,7 @@ def _compute_ripleys(
 # --- Tool Registration ---
 
 
-def register_tools(mcp: "FastMCP") -> None:
+def register_tools(mcp: FastMCP) -> None:
     """Register statistics tools with the MCP server."""
 
     @mcp.tool()
@@ -394,6 +396,7 @@ def register_tools(mcp: "FastMCP") -> None:
             CLQ value and interpretation.
         """
         from spatialtissuepy.statistics import colocalization_quotient
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -469,6 +472,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Cross-K values and interpretation.
         """
         from spatialtissuepy.statistics import cross_k
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -554,8 +558,10 @@ def register_tools(mcp: "FastMCP") -> None:
         HotspotResult
             Hotspot and coldspot counts.
         """
-        from spatialtissuepy.statistics import getis_ord_gi_star
         from scipy import stats
+
+        from spatialtissuepy.statistics import getis_ord_gi_star
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -627,6 +633,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Moran's I statistic and significance.
         """
         from spatialtissuepy.statistics import morans_i
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -645,12 +652,12 @@ def register_tools(mcp: "FastMCP") -> None:
         # 'I', 'expected', 'variance', 'zscore', 'pvalue'. Fall back to
         # legacy aliases for forward/backward compatibility.
         if isinstance(result, dict):
-            I = result.get("I", result.get("morans_i", 0))
+            I = result.get("I", result.get("morans_i", 0))  # noqa: E741 (Moran's I)
             E_I = result.get("expected", result.get("expected_I", -1 / (data.n_cells - 1)))
             z = result.get("zscore", result.get("z_score", 0))
             p = result.get("pvalue", result.get("p_value", 1))
         else:
-            I = float(result)
+            I = float(result)  # noqa: E741 (Moran's I)
             E_I = -1 / (data.n_cells - 1)
             z = 0
             p = 1
@@ -715,6 +722,7 @@ def register_tools(mcp: "FastMCP") -> None:
             g(r) values and interpretation.
         """
         from spatialtissuepy.statistics import pair_correlation_function
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -798,8 +806,9 @@ def register_tools(mcp: "FastMCP") -> None:
         GFunctionResult
             G function values and mean NN distance.
         """
-        from spatialtissuepy.statistics import g_function
         from spatialtissuepy.spatial import nearest_neighbors
+        from spatialtissuepy.statistics import g_function
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -886,5 +895,5 @@ def register_tools(mcp: "FastMCP") -> None:
         raise NotImplementedError(
             "mark_correlation is not yet implemented in the spatialtissuepy "
             "library. As an alternative, use statistics_morans_i to measure "
-            "spatial autocorrelation of marker '%s'." % marker
+            f"spatial autocorrelation of marker '{marker}'."
         )

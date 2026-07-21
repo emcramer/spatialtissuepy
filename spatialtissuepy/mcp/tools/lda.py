@@ -16,7 +16,7 @@ Tools (8 total):
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -106,7 +106,7 @@ class ModelSelectionResult(BaseModel):
     best_coherence: float
 
 
-def register_tools(mcp: "FastMCP") -> None:
+def register_tools(mcp: FastMCP) -> None:
     """Register LDA tools with the MCP server."""
 
     @mcp.tool()
@@ -146,6 +146,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Information about the fitted model.
         """
         from spatialtissuepy.lda import SpatialLDA
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -342,6 +343,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Coherence score.
         """
         from spatialtissuepy.lda import topic_coherence
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -385,6 +387,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Diversity score.
         """
         from spatialtissuepy.lda import topic_diversity
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -430,6 +433,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Consistency score overall and per topic.
         """
         from spatialtissuepy.lda import spatial_topic_consistency
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -489,6 +493,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Best n_topics and coherence scores.
         """
         from spatialtissuepy.lda import SpatialLDA, topic_coherence
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()

@@ -26,9 +26,10 @@ Tools (17 total):
 from __future__ import annotations
 
 import matplotlib
+
 matplotlib.use("Agg")  # Non-interactive backend
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -56,7 +57,7 @@ class SaveResult(BaseModel):
     success: bool
 
 
-def register_tools(mcp: "FastMCP") -> None:
+def register_tools(mcp: FastMCP) -> None:
     """Register visualization tools with the MCP server."""
 
     @mcp.tool()
@@ -99,8 +100,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_spatial_scatter
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         data = session_mgr.load_data(session_id, data_key)
@@ -160,8 +162,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_cell_types
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         data = session_mgr.load_data(session_id, data_key)
@@ -213,8 +216,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_density_map
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         data = session_mgr.load_data(session_id, data_key)
@@ -270,8 +274,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_marker_expression
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         data = session_mgr.load_data(session_id, data_key)
@@ -324,8 +329,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_voronoi
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         data = session_mgr.load_data(session_id, data_key)
@@ -384,8 +390,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_ripleys_curve
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         data = session_mgr.load_data(session_id, data_key)
@@ -447,8 +454,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_colocalization_heatmap
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         data = session_mgr.load_data(session_id, data_key)
@@ -501,8 +509,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_hotspot_map
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         data = session_mgr.load_data(session_id, data_key)
@@ -552,8 +561,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_neighborhood_enrichment
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         data = session_mgr.load_data(session_id, data_key)
@@ -609,8 +619,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_cell_graph
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         graph = session_mgr.load_graph(session_id, graph_key)
@@ -665,8 +676,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_degree_distribution
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         graph = session_mgr.load_graph(session_id, graph_key)
@@ -716,8 +728,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_mixing_matrix
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         graph = session_mgr.load_graph(session_id, graph_key)
@@ -767,8 +780,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_topic_composition
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         model = session_mgr.load_model(session_id, model_key)
@@ -821,8 +835,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_topic_spatial
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         model = session_mgr.load_model(session_id, model_key)
@@ -875,8 +890,9 @@ def register_tools(mcp: "FastMCP") -> None:
             Base64-encoded PNG image.
         """
         from spatialtissuepy.viz import plot_mapper_graph
-        from ..server import get_session_manager
+
         from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
         result = session_mgr.load_model(session_id, model_key)
@@ -925,10 +941,10 @@ def register_tools(mcp: "FastMCP") -> None:
         PlotResult
             Base64-encoded PNG image.
         """
-        from spatialtissuepy.viz import plot_trajectory
-        from ..server import get_session_manager
-        from ..serialization import figure_to_base64
         import pickle
+
+        from ..serialization import figure_to_base64
+        from ..server import get_session_manager
 
         session_mgr = get_session_manager()
 
@@ -999,6 +1015,7 @@ def register_tools(mcp: "FastMCP") -> None:
             File path and success status.
         """
         from spatialtissuepy.viz import plot_spatial_scatter
+
         from ..server import get_session_manager, resolve_data_path
 
         session_mgr = get_session_manager()

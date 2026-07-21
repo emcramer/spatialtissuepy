@@ -19,88 +19,87 @@ Example
 ...     neighborhood_composition,
 ...     dbscan_clustering,
 ... )
->>> 
+>>>
 >>> # Find k-nearest neighbors
 >>> distances, indices = nearest_neighbors(data.coordinates, k=10)
->>> 
+>>>
 >>> # Compute neighborhood composition
 >>> composition = neighborhood_composition(data, method='radius', radius=50)
->>> 
+>>>
 >>> # Cluster cells spatially
 >>> labels = dbscan_clustering(data, eps=30, min_samples=5)
 """
 
 # Distance module
+# Clustering module
+from .clustering import (
+    # Methods enum
+    ClusteringMethod,
+    cluster_purity,
+    # Utilities
+    cluster_statistics,
+    connected_components_spatial,
+    cut_dendrogram,
+    dbscan_by_type,
+    # DBSCAN
+    dbscan_clustering,
+    # HDBSCAN (optional)
+    hdbscan_clustering,
+    # Hierarchical
+    hierarchical_clustering,
+    hierarchical_linkage,
+    kmeans_by_type,
+    # K-means
+    kmeans_spatial,
+    # Graph-based
+    leiden_clustering,
+    louvain_clustering,
+    silhouette_spatial,
+    # Spatial regions
+    spatial_regions,
+)
 from .distance import (
     # Distance metrics
     DistanceMetric,
-    pairwise_distances,
-    pairwise_distances_between,
-    condensed_distances,
+    bounding_box,
     # Nearest neighbors
     build_kdtree,
-    nearest_neighbors,
-    radius_neighbors,
-    nearest_neighbor_distances,
-    mean_nearest_neighbor_distance,
-    # Distance to types
-    distance_to_type,
-    distance_to_nearest_different_type,
-    distance_matrix_by_type,
     # Utilities
     centroid,
     centroid_by_type,
-    bounding_box,
+    condensed_distances,
     convex_hull_area,
+    distance_matrix_by_type,
+    distance_to_nearest_different_type,
+    # Distance to types
+    distance_to_type,
+    mean_nearest_neighbor_distance,
+    nearest_neighbor_distances,
+    nearest_neighbors,
+    pairwise_distances,
+    pairwise_distances_between,
     point_density,
+    radius_neighbors,
 )
 
 # Neighborhood module
 from .neighborhood import (
     # Neighborhood computation
     NeighborhoodMethod,
-    compute_neighborhoods,
-    neighborhood_counts,
-    neighborhood_composition,
-    window_composition,
     # Adjacency
     adjacency_matrix,
-    type_adjacency_matrix,
-    # Statistics
-    neighborhood_size,
+    compute_neighborhoods,
+    interface_cells,
+    neighborhood_composition,
+    neighborhood_counts,
     neighborhood_diversity,
     neighborhood_enrichment,
-    interface_cells,
+    # Statistics
+    neighborhood_size,
     # DataFrame conversion
     neighborhood_to_dataframe,
-)
-
-# Clustering module
-from .clustering import (
-    # Methods enum
-    ClusteringMethod,
-    # DBSCAN
-    dbscan_clustering,
-    dbscan_by_type,
-    # HDBSCAN (optional)
-    hdbscan_clustering,
-    # K-means
-    kmeans_spatial,
-    kmeans_by_type,
-    # Hierarchical
-    hierarchical_clustering,
-    hierarchical_linkage,
-    cut_dendrogram,
-    # Graph-based
-    leiden_clustering,
-    louvain_clustering,
-    # Utilities
-    cluster_statistics,
-    cluster_purity,
-    silhouette_spatial,
-    # Spatial regions
-    spatial_regions,
-    connected_components_spatial,
+    type_adjacency_matrix,
+    window_composition,
 )
 
 __all__ = [

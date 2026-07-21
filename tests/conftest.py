@@ -5,15 +5,14 @@ This module provides reusable test data, fixtures, and utilities
 for all test modules.
 """
 
-import pytest
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-import tempfile
-import json
+import pytest
 
 from spatialtissuepy import SpatialTissueData
-
 
 # =============================================================================
 # Pytest Configuration
@@ -22,7 +21,7 @@ from spatialtissuepy import SpatialTissueData
 def pytest_configure(config):
     """Register custom markers."""
     config.addinivalue_line(
-        "markers", 
+        "markers",
         "slow: marks tests as slow (deselect with '-m \"not slow\"')"
     )
 
@@ -163,12 +162,12 @@ def multisample_cohort():
         sample_id = f'sample_{i}'
         sample = SpatialTissueData(coords, types, sample_ids=[sample_id] * n)
         samples.append(sample)
-    
+
     # Combine all samples
     all_coords = np.vstack([s.coordinates for s in samples])
     all_types = np.concatenate([s.cell_types for s in samples])
     all_samples = np.concatenate([s.sample_ids for s in samples])
-    
+
     return SpatialTissueData(all_coords, all_types, sample_ids=all_samples)
 
 
@@ -182,14 +181,14 @@ def tissue_with_markers():
     np.random.seed(42)
     coords = np.random.rand(100, 2) * 500
     types = np.random.choice(['T_cell', 'Tumor', 'Stromal'], 100)
-    
+
     markers = pd.DataFrame({
         'CD3': np.random.rand(100),
         'CD8': np.random.rand(100),
         'PD1': np.random.rand(100),
         'Ki67': np.random.rand(100),
     })
-    
+
     return SpatialTissueData(coords, types, markers=markers)
 
 
@@ -201,7 +200,7 @@ def tissue_with_markers():
 def clustered_pattern():
     """Tissue with clustered spatial pattern."""
     np.random.seed(42)
-    
+
     # Create 3 clusters
     clusters = []
     for center_x, center_y in [(200, 200), (600, 200), (400, 600)]:
@@ -209,10 +208,10 @@ def clustered_pattern():
         x = np.random.normal(center_x, 30, n)
         y = np.random.normal(center_y, 30, n)
         clusters.append(np.column_stack([x, y]))
-    
+
     coords = np.vstack(clusters)
     types = np.array(['Cluster_A'] * 50 + ['Cluster_B'] * 50 + ['Cluster_C'] * 50)
-    
+
     return SpatialTissueData(coords, types)
 
 
@@ -244,14 +243,14 @@ def regular_grid():
 def temp_csv_file(temp_dir, simple_tissue_2d):
     """Temporary CSV file with sample data."""
     filepath = temp_dir / "test_data.csv"
-    
+
     df = pd.DataFrame({
         'x': simple_tissue_2d.coordinates[:, 0],
         'y': simple_tissue_2d.coordinates[:, 1],
         'cell_type': simple_tissue_2d.cell_types,
     })
     df.to_csv(filepath, index=False)
-    
+
     return filepath
 
 
@@ -259,19 +258,19 @@ def temp_csv_file(temp_dir, simple_tissue_2d):
 def temp_csv_with_markers(temp_dir, tissue_with_markers):
     """Temporary CSV file with marker data."""
     filepath = temp_dir / "test_data_markers.csv"
-    
+
     df = pd.DataFrame({
         'x': tissue_with_markers.coordinates[:, 0],
         'y': tissue_with_markers.coordinates[:, 1],
         'cell_type': tissue_with_markers.cell_types,
     })
-    
+
     # Add marker columns
     for col in tissue_with_markers.marker_names:
         df[col] = tissue_with_markers.markers[col]
-    
+
     df.to_csv(filepath, index=False)
-    
+
     return filepath
 
 
@@ -279,7 +278,7 @@ def temp_csv_with_markers(temp_dir, tissue_with_markers):
 def temp_json_file(temp_dir, simple_tissue_2d):
     """Temporary JSON file with sample data."""
     filepath = temp_dir / "test_data.json"
-    
+
     cells = []
     for i in range(simple_tissue_2d.n_cells):
         cell = {
@@ -288,7 +287,7 @@ def temp_json_file(temp_dir, simple_tissue_2d):
             'cell_type': str(simple_tissue_2d.cell_types[i]),
         }
         cells.append(cell)
-    
+
     data = {
         'cells': cells,
         'metadata': {
@@ -296,10 +295,10 @@ def temp_json_file(temp_dir, simple_tissue_2d):
             'n_cells': simple_tissue_2d.n_cells,
         }
     }
-    
+
     with open(filepath, 'w') as f:
         json.dump(data, f)
-    
+
     return filepath
 
 
@@ -310,7 +309,7 @@ def temp_json_file(temp_dir, simple_tissue_2d):
 def assert_tissues_equal(tissue1, tissue2, check_markers=True):
     """
     Assert that two SpatialTissueData objects are equal.
-    
+
     Parameters
     ----------
     tissue1, tissue2 : SpatialTissueData
@@ -320,24 +319,24 @@ def assert_tissues_equal(tissue1, tissue2, check_markers=True):
     """
     assert tissue1.n_cells == tissue2.n_cells
     assert tissue1.n_dims == tissue2.n_dims
-    
+
     np.testing.assert_array_almost_equal(
-        tissue1.coordinates, 
+        tissue1.coordinates,
         tissue2.coordinates
     )
-    
+
     np.testing.assert_array_equal(
         tissue1.cell_types,
         tissue2.cell_types
     )
-    
+
     if tissue1.is_multisample or tissue2.is_multisample:
         assert tissue1.is_multisample == tissue2.is_multisample
         np.testing.assert_array_equal(
             tissue1.sample_ids,
             tissue2.sample_ids
         )
-    
+
     if check_markers:
         if tissue1.markers is not None and tissue2.markers is not None:
             pd.testing.assert_frame_equal(

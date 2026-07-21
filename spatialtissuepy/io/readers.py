@@ -5,9 +5,11 @@ Supports CSV, JSON, HDF5, and AnnData formats.
 """
 
 from __future__ import annotations
-from typing import Optional, List, Dict, Any, Union
-from pathlib import Path
+
 import json
+from pathlib import Path
+from typing import List, Optional, Union
+
 import numpy as np
 import pandas as pd
 
@@ -114,8 +116,8 @@ def read_json(
     }
     """
     filepath = Path(filepath)
-    
-    with open(filepath, 'r') as f:
+
+    with open(filepath) as f:
         data = json.load(f)
 
     # Handle nested or flat structure
@@ -145,7 +147,7 @@ def read_json(
     for i, cell in enumerate(cells):
         if x_key not in cell or y_key not in cell:
             raise ValidationError(f"Cell {i} missing coordinates")
-        
+
         coord = [cell[x_key], cell[y_key]]
         if z_key and z_key in cell:
             coord.append(cell[z_key])
@@ -166,7 +168,7 @@ def read_json(
 
     # Convert to arrays
     coordinates = np.array(coords)
-    
+
     markers = None
     if marker_data:
         # Ensure all markers have same length

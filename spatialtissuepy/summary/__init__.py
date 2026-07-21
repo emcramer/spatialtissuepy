@@ -79,44 +79,42 @@ Example
 """
 
 # Import metrics to register them
-from . import population
-from . import spatial
-from . import neighborhood
-
-# Public API - Registry
-from .registry import (
-    # Core registry functions
-    register_metric,
-    get_metric,
-    list_metrics,
-    list_categories,
-    get_registry,
-    describe_metric,
-    # Custom metric support
-    register_custom_metric,
-    unregister_custom_metric,
-    list_custom_metrics,
-    clear_custom_metrics,
-    # Classes and exceptions
-    MetricInfo,
-    MetricValidationError,
-    MetricRegistrationError,
-)
+from . import neighborhood, population, spatial
 
 # Public API - Panel
 from .panel import (
-    StatisticsPanel,
     PanelMetric,
-    load_panel,
+    StatisticsPanel,
     list_panels,
+    load_panel,
+)
+
+# Public API - Registry
+from .registry import (
+    # Classes and exceptions
+    MetricInfo,
+    MetricRegistrationError,
+    MetricValidationError,
+    clear_custom_metrics,
+    describe_metric,
+    get_metric,
+    get_registry,
+    list_categories,
+    list_custom_metrics,
+    list_metrics,
+    # Custom metric support
+    register_custom_metric,
+    # Core registry functions
+    register_metric,
+    unregister_custom_metric,
 )
 
 # Public API - Summary
 from .summary import (
-    SpatialSummary,
     MultiSampleSummary,
-    compute_summary,
+    SpatialSummary,
     compute_multi_summary,
+    compute_summary,
 )
 
 __all__ = [

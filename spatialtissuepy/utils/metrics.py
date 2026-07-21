@@ -2,8 +2,9 @@
 Common metrics and calculations for spatial analysis.
 """
 
-import numpy as np
 from typing import Union
+
+import numpy as np
 
 
 def shannon_entropy(
@@ -34,19 +35,19 @@ def shannon_entropy(
     """
     counts = np.asarray(counts, dtype=float)
     counts = counts[counts > 0]  # Remove zeros
-    
+
     if len(counts) == 0:
         return 0.0
-    
+
     # Convert to proportions
     props = counts / counts.sum()
-    
+
     # Calculate entropy: -sum(p * log(p))
     entropy = -np.sum(props * np.log(props))
-    
+
     if normalize and len(counts) > 1:
         entropy = entropy / np.log(len(counts))
-    
+
     return float(entropy)
 
 
@@ -78,14 +79,14 @@ def simpson_diversity(
     """
     counts = np.asarray(counts, dtype=float)
     total = counts.sum()
-    
+
     if total <= 1:
         return 0.0
-    
+
     # D = 1 - sum(n_i * (n_i - 1)) / (N * (N - 1))
     numerator = np.sum(counts * (counts - 1))
     denominator = total * (total - 1)
-    
+
     return float(1 - numerator / denominator)
 
 
@@ -113,13 +114,13 @@ def jaccard_index(
     """
     set_a = set(set_a)
     set_b = set(set_b)
-    
+
     intersection = len(set_a & set_b)
     union = len(set_a | set_b)
-    
+
     if union == 0:
         return 0.0
-    
+
     return float(intersection / union)
 
 
@@ -166,27 +167,27 @@ def normalize_counts(
         Normalized data.
     """
     counts = np.asarray(counts, dtype=float)
-    
+
     if counts.ndim == 1:
         counts = counts.reshape(1, -1)
-    
+
     if method == 'proportion':
         row_sums = counts.sum(axis=1, keepdims=True)
         row_sums[row_sums == 0] = 1  # Avoid division by zero
         return counts / row_sums
-    
+
     elif method == 'zscore':
         mean = counts.mean(axis=0, keepdims=True)
         std = counts.std(axis=0, keepdims=True)
         std[std == 0] = 1
         return (counts - mean) / std
-    
+
     elif method == 'minmax':
         min_val = counts.min(axis=0, keepdims=True)
         max_val = counts.max(axis=0, keepdims=True)
         range_val = max_val - min_val
         range_val[range_val == 0] = 1
         return (counts - min_val) / range_val
-    
+
     else:
         raise ValueError(f"Unknown normalization method: {method}")

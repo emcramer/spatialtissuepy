@@ -5,13 +5,16 @@ This module registers Mapper-derived metrics with the StatisticsPanel
 for standardized computation across samples.
 """
 
-from typing import Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
+
 import numpy as np
 
 from spatialtissuepy.summary.registry import register_metric
 
 if TYPE_CHECKING:
     from spatialtissuepy.core import SpatialTissueData
+
+    from .mapper import MapperResult
 
 
 # Store fitted results for reuse within a session
@@ -36,14 +39,14 @@ def _mapper_n_nodes(
 ) -> Dict[str, float]:
     """Compute number of Mapper nodes."""
     from .mapper import SpatialMapper
-    
+
     mapper = SpatialMapper(
         filter_fn='density',
         n_intervals=n_intervals,
         overlap=overlap,
     )
     result = mapper.fit(data, neighborhood_radius=radius)
-    
+
     return {'mapper_n_nodes': float(result.n_nodes)}
 
 
@@ -61,14 +64,14 @@ def _mapper_n_components(
 ) -> Dict[str, float]:
     """Compute number of connected components."""
     from .mapper import SpatialMapper
-    
+
     mapper = SpatialMapper(
         filter_fn='density',
         n_intervals=n_intervals,
         overlap=overlap,
     )
     result = mapper.fit(data, neighborhood_radius=radius)
-    
+
     return {'mapper_n_components': float(result.n_components)}
 
 
@@ -86,16 +89,16 @@ def _mapper_density(
 ) -> Dict[str, float]:
     """Compute Mapper graph density."""
     from .mapper import SpatialMapper
-    
+
     mapper = SpatialMapper(
         filter_fn='density',
         n_intervals=n_intervals,
         overlap=overlap,
     )
     result = mapper.fit(data, neighborhood_radius=radius)
-    
+
     stats = result.statistics
-    
+
     return {'mapper_density': float(stats.get('density', 0))}
 
 
@@ -113,16 +116,16 @@ def _mapper_summary(
 ) -> Dict[str, float]:
     """Compute comprehensive Mapper statistics."""
     from .mapper import SpatialMapper
-    
+
     mapper = SpatialMapper(
         filter_fn='density',
         n_intervals=n_intervals,
         overlap=overlap,
     )
     result = mapper.fit(data, neighborhood_radius=radius)
-    
+
     stats = result.statistics
-    
+
     output = {
         'mapper_n_nodes': float(result.n_nodes),
         'mapper_n_edges': float(result.n_edges),
@@ -131,11 +134,11 @@ def _mapper_summary(
         'mapper_mean_node_size': float(stats.get('mean_node_size', 0)),
         'mapper_density': float(stats.get('density', 0)),
     }
-    
+
     # Node coverage
     coverage = len(result.cell_node_map) / data.n_cells if data.n_cells > 0 else 0
     output['mapper_coverage'] = coverage
-    
+
     return output
 
 
@@ -153,16 +156,16 @@ def _mapper_clustering(
 ) -> Dict[str, float]:
     """Compute Mapper average clustering coefficient."""
     from .mapper import SpatialMapper
-    
+
     mapper = SpatialMapper(
         filter_fn='density',
         n_intervals=n_intervals,
         overlap=overlap,
     )
     result = mapper.fit(data, neighborhood_radius=radius)
-    
+
     stats = result.statistics
-    
+
     return {'mapper_avg_clustering': float(stats.get('avg_clustering', 0))}
 
 
@@ -185,14 +188,14 @@ def _mapper_spatial_filter(
     """Compute Mapper with spatial x-coordinate filter."""
     from .mapper import SpatialMapper
     from .spatial_filters import spatial_coordinate_filter
-    
+
     mapper = SpatialMapper(
         filter_fn=spatial_coordinate_filter('x'),
         n_intervals=n_intervals,
         overlap=overlap,
     )
     result = mapper.fit(data, neighborhood_radius=radius)
-    
+
     return {
         'mapper_spatial_n_nodes': float(result.n_nodes),
         'mapper_spatial_n_components': float(result.n_components),
@@ -215,21 +218,21 @@ def _mapper_distance_to_type(
     """Compute Mapper with distance-to-type filter."""
     from .mapper import SpatialMapper
     from .spatial_filters import distance_to_type_filter
-    
+
     # Check if cell type exists
     if cell_type not in data.cell_types_unique:
         return {
             f'mapper_dist_{cell_type}_n_nodes': np.nan,
             f'mapper_dist_{cell_type}_n_components': np.nan,
         }
-    
+
     mapper = SpatialMapper(
         filter_fn=distance_to_type_filter(cell_type),
         n_intervals=n_intervals,
         overlap=overlap,
     )
     result = mapper.fit(data, neighborhood_radius=radius)
-    
+
     return {
         f'mapper_dist_{cell_type}_n_nodes': float(result.n_nodes),
         f'mapper_dist_{cell_type}_n_components': float(result.n_components),
@@ -254,14 +257,14 @@ def _mapper_largest_component(
 ) -> Dict[str, float]:
     """Compute largest component statistics."""
     from .mapper import SpatialMapper
-    
+
     mapper = SpatialMapper(
         filter_fn='density',
         n_intervals=n_intervals,
         overlap=overlap,
     )
     result = mapper.fit(data, neighborhood_radius=radius)
-    
+
     if result.graph is not None and result.n_nodes > 0:
         import networkx as nx
         components = list(nx.connected_components(result.graph))
@@ -274,7 +277,7 @@ def _mapper_largest_component(
     else:
         largest_size = 0
         ratio = 0
-    
+
     return {
         'mapper_largest_component_nodes': float(largest_size),
         'mapper_component_ratio': float(ratio),
@@ -299,14 +302,14 @@ def _mapper_node_size_stats(
 ) -> Dict[str, float]:
     """Compute node size distribution statistics."""
     from .mapper import SpatialMapper
-    
+
     mapper = SpatialMapper(
         filter_fn='density',
         n_intervals=n_intervals,
         overlap=overlap,
     )
     result = mapper.fit(data, neighborhood_radius=radius)
-    
+
     if result.nodes:
         sizes = [node.size for node in result.nodes]
         return {

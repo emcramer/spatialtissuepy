@@ -30,8 +30,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 if TYPE_CHECKING:
     from spatialtissuepy import SpatialTissueData
-    from spatialtissuepy.network import CellGraph
     from spatialtissuepy.lda import SpatialLDA
+    from spatialtissuepy.network import CellGraph
     from spatialtissuepy.topology import MapperResult
 
 
@@ -175,7 +175,7 @@ class SessionManager:
         self,
         session_id: str,
         key: str,
-        data: "SpatialTissueData",
+        data: SpatialTissueData,
     ) -> None:
         """
         Store SpatialTissueData object.
@@ -203,7 +203,7 @@ class SessionManager:
         self,
         session_id: str,
         key: str,
-    ) -> Optional["SpatialTissueData"]:
+    ) -> Optional[SpatialTissueData]:
         """
         Load SpatialTissueData object.
 
@@ -249,7 +249,7 @@ class SessionManager:
         self,
         session_id: str,
         key: str,
-        graph: "CellGraph",
+        graph: CellGraph,
         params: Optional[Dict] = None,
     ) -> None:
         """
@@ -283,7 +283,7 @@ class SessionManager:
         self,
         session_id: str,
         key: str,
-    ) -> Optional["CellGraph"]:
+    ) -> Optional[CellGraph]:
         """
         Load graph from storage.
 
@@ -303,7 +303,7 @@ class SessionManager:
 
         path = self.base_dir / session_id / "graphs" / f"{key}.json"
         if path.exists():
-            with open(path, "r") as f:
+            with open(path) as f:
                 data = json.load(f)
             self._touch_session(session_id)
             return deserialize_graph(data)
@@ -320,7 +320,7 @@ class SessionManager:
         self,
         session_id: str,
         key: str,
-        model: Union["SpatialLDA", "MapperResult"],
+        model: Union[SpatialLDA, MapperResult],
         model_type: str,
     ) -> None:
         """
@@ -354,7 +354,7 @@ class SessionManager:
         self,
         session_id: str,
         key: str,
-    ) -> Optional[Union["SpatialLDA", "MapperResult", Dict]]:
+    ) -> Optional[Union[SpatialLDA, MapperResult, Dict]]:
         """
         Load model from storage.
 
@@ -374,7 +374,7 @@ class SessionManager:
 
         path = self.base_dir / session_id / "models" / f"{key}.json"
         if path.exists():
-            with open(path, "r") as f:
+            with open(path) as f:
                 data = json.load(f)
             self._touch_session(session_id)
             return deserialize_model(data)
@@ -492,7 +492,7 @@ class SessionManager:
 
         path = self.base_dir / session_id / "metadata.json"
         if path.exists():
-            with open(path, "r") as f:
+            with open(path) as f:
                 data = json.load(f)
             # Handle missing fields for backwards compatibility
             data.setdefault("panel_keys", [])

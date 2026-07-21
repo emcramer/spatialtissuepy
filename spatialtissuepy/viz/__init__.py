@@ -46,85 +46,84 @@ Publication Export
 """
 
 # Configuration and themes
+# Comparison plots
+from .comparison import (
+    plot_metric_comparison,
+    plot_metric_heatmap,
+    plot_pca_samples,
+    plot_sample_correlation,
+    plot_trajectory,
+    plot_umap_samples,
+    plot_violin_comparison,
+)
 from .config import (
-    set_publication_style,
-    set_default_style,
-    get_cell_type_colors,
-    get_categorical_palette,
-    get_sequential_cmap,
-    get_diverging_cmap,
-    save_figure,
     PlotConfig,
+    get_categorical_palette,
+    get_cell_type_colors,
+    get_diverging_cmap,
+    get_sequential_cmap,
+    save_figure,
+    set_default_style,
+    set_publication_style,
 )
 
-# Spatial plots
-from .spatial import (
-    plot_spatial_scatter,
-    plot_cell_types,
-    plot_marker_expression,
-    plot_density_map,
-    plot_voronoi,
-    plot_spatial_domains,
-    plot_cell_neighborhoods,
+# LDA plots
+from .lda import (
+    plot_lda_diagnostics,
+    plot_topic_composition,
+    plot_topic_enrichment_heatmap,
+    plot_topic_proportions_bar,
+    plot_topic_spatial,
+    plot_topic_transition_matrix,
+)
+
+# Mapper/TDA plots
+from .mapper import (
+    create_mapper_report,
+    plot_filter_distribution,
+    plot_mapper_diagnostics,
+    plot_mapper_graph,
+    plot_mapper_spatial,
+    plot_node_composition,
 )
 
 # Network plots
 from .network import (
     plot_cell_graph,
-    plot_graph_on_tissue,
-    plot_degree_distribution,
     plot_centrality_by_type,
+    plot_degree_distribution,
+    plot_graph_on_tissue,
     plot_type_mixing_matrix,
-)
-
-# Statistics plots
-from .statistics import (
-    plot_ripleys_curve,
-    plot_pcf_curve,
-    plot_colocalization_heatmap,
-    plot_neighborhood_enrichment,
-    plot_hotspot_map,
-    plot_morans_scatter,
-)
-
-# Comparison plots
-from .comparison import (
-    plot_metric_comparison,
-    plot_metric_heatmap,
-    plot_violin_comparison,
-    plot_pca_samples,
-    plot_umap_samples,
-    plot_sample_correlation,
-    plot_trajectory,
-)
-
-# LDA plots
-from .lda import (
-    plot_topic_composition,
-    plot_topic_spatial,
-    plot_topic_enrichment_heatmap,
-    plot_topic_transition_matrix,
-    plot_lda_diagnostics,
-    plot_topic_proportions_bar,
-)
-
-# Mapper/TDA plots
-from .mapper import (
-    plot_mapper_graph,
-    plot_mapper_spatial,
-    plot_filter_distribution,
-    plot_node_composition,
-    plot_mapper_diagnostics,
-    create_mapper_report,
 )
 
 # Quality control plots
 from .qc import (
     plot_cell_count_summary,
-    plot_spatial_coverage,
-    plot_model_selection,
-    plot_stability_analysis,
     plot_convergence,
+    plot_model_selection,
+    plot_spatial_coverage,
+    plot_stability_analysis,
+)
+
+# Spatial plots
+from .spatial import (
+    plot_cell_neighborhoods,
+    plot_cell_types,
+    plot_density_map,
+    plot_marker_expression,
+    plot_spatial_domains,
+    plot_spatial_scatter,
+    plot_voronoi,
+)
+
+# Statistics plots
+from .statistics import (
+    plot_colocalization_heatmap,
+    plot_hotspot_map,
+    plot_morans_scatter,
+    plot_neighborhood_enrichment,
+    plot_pcf_curve,
+    plot_ripleys_curve,
 )
 
 __all__ = [

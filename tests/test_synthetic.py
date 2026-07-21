@@ -5,23 +5,18 @@ Tests PhysiCell and other ABM framework integration for loading
 simulation outputs into SpatialTissueData format.
 """
 
-import pytest
-import numpy as np
-import pandas as pd
 from pathlib import Path
+
+import numpy as np
+import pytest
 
 from spatialtissuepy import SpatialTissueData
 from spatialtissuepy.synthetic import (
-    # Base classes
     ABMTimeStep,
-    ABMSimulation,
-    ABMExperiment,
+    PhysiCellSimulation,
     # PhysiCell
     PhysiCellTimeStep,
-    PhysiCellSimulation,
-    PhysiCellExperiment,
 )
-
 
 # =============================================================================
 # Base Class Tests
@@ -29,7 +24,7 @@ from spatialtissuepy.synthetic import (
 
 class TestABMBaseClasses:
     """Tests for base ABM classes."""
-    
+
     def test_abm_timestep_interface(self):
         """Test ABMTimeStep is an abstract base class."""
         # Should not be instantiable directly
@@ -43,7 +38,7 @@ class TestABMBaseClasses:
 
 class TestPhysiCellTimeStep:
     """Tests for PhysiCell timestep class logic."""
-    
+
     @pytest.fixture
     def mock_timestep(self):
         """Create a mock timestep with pre-loaded data."""
@@ -53,7 +48,7 @@ class TestPhysiCellTimeStep:
             source_path=Path("output00000010.xml"),
             cells_mat_path=Path("output00000010_cells.mat")
         )
-        
+
         # Inject mock pre-loaded data to avoid actual file parsing
         ts._cell_data = {
             'positions': np.random.rand(50, 3) * 1000,
@@ -76,7 +71,7 @@ class TestPhysiCellTimeStep:
     def test_physicell_timestep_to_spatial_data(self, mock_timestep):
         """Test converting timestep to SpatialTissueData."""
         data = mock_timestep.to_spatial_data()
-        
+
         assert isinstance(data, SpatialTissueData)
         assert data.n_cells == 50
         assert data.n_dims == 3
@@ -89,27 +84,27 @@ class TestPhysiCellTimeStep:
 
 class TestPhysiCellSimulation:
     """Tests for PhysiCell simulation class logic."""
-    
+
     def test_simulation_iteration(self):
         """Test that simulation can be iterated over."""
         # Mock class since we can't easily create valid PhysiCell folders here
         class MockSim(PhysiCellSimulation):
             def __init__(self):
                 self.output_folder = Path("test")
-                self._timestep_files = [(0, Path("0.xml"), Path("0.mat")), 
+                self._timestep_files = [(0, Path("0.xml"), Path("0.mat")),
                                        (1, Path("1.xml"), Path("1.mat"))]
                 self.cell_type_mapping = {0: 'A'}
                 self.include_dead_cells = False
                 self.metadata = {}
-            
+
             @property
             def n_timesteps(self): return 2
-            
+
             def get_timestep(self, idx):
-                ts = PhysiCellTimeStep(time=float(idx*10), time_index=idx, 
+                ts = PhysiCellTimeStep(time=float(idx*10), time_index=idx,
                                       source_path=self._timestep_files[idx][1])
                 ts._cell_data = {'positions': np.zeros((10,3)), 'cell_types': np.array(['A']*10),
-                                'dead_flags': np.zeros(10), 'volumes': np.ones(10), 
+                                'dead_flags': np.zeros(10), 'volumes': np.ones(10),
                                 'radii': np.ones(10), 'ids': np.arange(10), 'phases': np.ones(10)}
                 return ts
 
@@ -125,7 +120,7 @@ class TestPhysiCellSimulation:
 
 class TestSyntheticIntegration:
     """Integration tests for synthetic module."""
-    
+
     def test_timestep_to_analysis_workflow(self):
         """Test converting timestep to SpatialTissueData for analysis."""
         ts = PhysiCellTimeStep(time=0.0, time_index=0, source_path=Path("test.xml"))
@@ -138,10 +133,10 @@ class TestSyntheticIntegration:
             'ids': np.arange(10),
             'phases': np.ones(10)
         }
-        
+
         data = ts.to_spatial_data()
         assert data.n_cells == 10
-        
+
         # Verify can compute basic statistics
         from spatialtissuepy.summary import StatisticsPanel
         panel = StatisticsPanel().add('cell_counts')

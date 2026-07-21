@@ -89,7 +89,7 @@ class FilterResult(BaseModel):
     mean_value: float
 
 
-def register_tools(mcp: "FastMCP") -> None:
+def register_tools(mcp: FastMCP) -> None:
     """Register topology tools with the MCP server."""
 
     @mcp.tool()
@@ -137,6 +137,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Information about the Mapper graph.
         """
         from spatialtissuepy.topology import spatial_mapper
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -195,6 +196,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Statistics of filter values.
         """
         from spatialtissuepy.topology import density_filter
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -238,6 +240,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Statistics of filter values.
         """
         from spatialtissuepy.topology import eccentricity_filter
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -284,6 +287,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Statistics of filter values.
         """
         from spatialtissuepy.topology import pca_filter
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -330,6 +334,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Statistics of filter values.
         """
         from spatialtissuepy.topology import distance_to_type_filter
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -374,6 +379,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Statistics of filter values.
         """
         from spatialtissuepy.topology import radial_filter
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()

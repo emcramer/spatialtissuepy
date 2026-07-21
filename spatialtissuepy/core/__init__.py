@@ -7,7 +7,7 @@ SpatialTissueData : Main container for spatial cell data
 Cell : Lightweight cell representation
 """
 
-from spatialtissuepy.core.spatial_data import SpatialTissueData
 from spatialtissuepy.core.cell import Cell
+from spatialtissuepy.core.spatial_data import SpatialTissueData
 
 __all__ = ["SpatialTissueData", "Cell"]

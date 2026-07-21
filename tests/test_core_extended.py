@@ -4,17 +4,16 @@ Tests for spatialtissuepy.core module (continued).
 Additional tests for iteration, spatial queries, I/O, and neighborhoods.
 """
 
-import pytest
-import numpy as np
-import pandas as pd
 import tempfile
-import json
 from pathlib import Path
 
-from spatialtissuepy.core.spatial_data import SpatialTissueData
-from spatialtissuepy.core.cell import Cell
-from spatialtissuepy.core.validators import ValidationError
+import numpy as np
+import pandas as pd
+import pytest
 
+from spatialtissuepy.core.cell import Cell
+from spatialtissuepy.core.spatial_data import SpatialTissueData
+from spatialtissuepy.core.validators import ValidationError
 
 # =============================================================================
 # Fixtures
@@ -145,11 +144,11 @@ class TestSpatialTissueDataIO:
     def test_to_csv_and_from_csv(self, simple_data):
         with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as f:
             filepath = Path(f.name)
-        
+
         try:
             simple_data.to_csv(filepath)
             loaded = SpatialTissueData.from_csv(filepath)
-            
+
             assert loaded.n_cells == 100
             assert loaded.n_cell_types == simple_data.n_cell_types
             np.testing.assert_array_almost_equal(
@@ -168,7 +167,7 @@ class TestSpatialTissueDataIO:
         with tempfile.NamedTemporaryFile(suffix='.csv', delete=False, mode='w') as f:
             f.write("x,y\n1,2\n3,4\n")
             filepath = Path(f.name)
-        
+
         try:
             with pytest.raises(ValidationError, match="cell_type"):
                 SpatialTissueData.from_csv(filepath)
@@ -188,7 +187,7 @@ class TestSpatialTissueDataNeighborhoods:
         n_types = simple_data.n_cell_types
         neigh = np.random.rand(100, n_types)
         data_with_neigh = simple_data.add_neighborhoods(neigh)
-        
+
         assert data_with_neigh.has_neighborhoods
         assert data_with_neigh.neighborhoods.shape == (100, n_types)
         # Original should be unchanged (immutability)
@@ -203,7 +202,7 @@ class TestSpatialTissueDataNeighborhoods:
         neigh = np.random.rand(100, 4)
         params = {'method': 'knn', 'k': 30}
         data_with_neigh = simple_data.add_neighborhoods(neigh, params=params)
-        
+
         assert data_with_neigh._neighborhood_params == params
 
 
@@ -248,7 +247,7 @@ class TestEdgeCases:
         coords = np.array([[100.0, 200.0]])
         types = ['T_cell']
         data = SpatialTissueData(coords, types)
-        
+
         assert data.n_cells == 1
         assert data.n_cell_types == 1
 
@@ -256,7 +255,7 @@ class TestEdgeCases:
         coords = np.random.rand(100, 2)
         types = ['T_cell'] * 100
         data = SpatialTissueData(coords, types)
-        
+
         assert data.n_cell_types == 1
         assert data.cell_type_counts['T_cell'] == 100
 
@@ -264,10 +263,10 @@ class TestEdgeCases:
         coords = np.random.rand(50, 3) * 100
         types = ['A', 'B'] * 25
         data = SpatialTissueData(coords, types)
-        
+
         assert data.n_dims == 3
         assert 'z' in data.bounds
-        
+
         cell = data.get_cell(0)
         assert cell.z is not None
         assert cell.ndim == 3
@@ -276,7 +275,7 @@ class TestEdgeCases:
         coords = np.random.rand(10, 2)
         types = ['T细胞', 'Célula', 'κύτταρο'] * 3 + ['cell']
         data = SpatialTissueData(coords, types)
-        
+
         assert data.n_cell_types == 4
 
     def test_very_close_cells(self):
@@ -284,7 +283,7 @@ class TestEdgeCases:
         coords = np.random.rand(100, 2) * 0.001
         types = ['A'] * 100
         data = SpatialTissueData(coords, types)
-        
+
         # All cells should be in a very small neighborhood
         indices = data.query_radius(coords[0], radius=0.1)
         assert len(indices) == 100

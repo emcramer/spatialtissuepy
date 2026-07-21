@@ -3,13 +3,13 @@ Utility functions for spatialtissuepy.
 """
 
 from spatialtissuepy.utils.metrics import (
+    jaccard_index,
     shannon_entropy,
     simpson_diversity,
-    jaccard_index,
 )
 
 __all__ = [
     "shannon_entropy",
-    "simpson_diversity", 
+    "simpson_diversity",
     "jaccard_index",
 ]

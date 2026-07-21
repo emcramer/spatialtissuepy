@@ -5,6 +5,7 @@ Provides validation functions for coordinates, cell types, and data consistency.
 """
 
 from typing import Optional, Sequence, Union
+
 import numpy as np
 import pandas as pd
 
@@ -42,15 +43,15 @@ def validate_coordinates(
         If coordinates are invalid.
     """
     coords = np.asarray(coords, dtype=np.float64)
-    
+
     if coords.ndim != 2:
         raise ValidationError(
             f"Coordinates must be 2D array, got {coords.ndim}D"
         )
-    
+
     if coords.shape[0] == 0:
         raise ValidationError("Coordinates array is empty")
-    
+
     if ndim is not None:
         if coords.shape[1] != ndim:
             raise ValidationError(
@@ -60,16 +61,16 @@ def validate_coordinates(
         raise ValidationError(
             f"Coordinates must be 2D or 3D, got {coords.shape[1]}D"
         )
-    
+
     if not allow_nan and np.any(np.isnan(coords)):
         nan_count = np.sum(np.any(np.isnan(coords), axis=1))
         raise ValidationError(
             f"Coordinates contain {nan_count} rows with NaN values"
         )
-    
+
     if np.any(np.isinf(coords)):
         raise ValidationError("Coordinates contain infinite values")
-    
+
     return coords
 
 
@@ -98,18 +99,18 @@ def validate_cell_types(
         If cell types are invalid.
     """
     cell_types = np.asarray(cell_types, dtype=str)
-    
+
     if cell_types.ndim != 1:
         raise ValidationError(
             f"Cell types must be 1D array, got {cell_types.ndim}D"
         )
-    
+
     if len(cell_types) != n_cells:
         raise ValidationError(
             f"Cell types length ({len(cell_types)}) does not match "
             f"number of cells ({n_cells})"
         )
-    
+
     # Check for empty strings
     empty_mask = cell_types == ""
     if np.any(empty_mask):
@@ -117,7 +118,7 @@ def validate_cell_types(
         raise ValidationError(
             f"Cell types contain {empty_count} empty strings"
         )
-    
+
     return cell_types
 
 
@@ -147,20 +148,20 @@ def validate_sample_ids(
     """
     if sample_ids is None:
         return None
-    
+
     sample_ids = np.asarray(sample_ids, dtype=str)
-    
+
     if sample_ids.ndim != 1:
         raise ValidationError(
             f"Sample IDs must be 1D array, got {sample_ids.ndim}D"
         )
-    
+
     if len(sample_ids) != n_cells:
         raise ValidationError(
             f"Sample IDs length ({len(sample_ids)}) does not match "
             f"number of cells ({n_cells})"
         )
-    
+
     return sample_ids
 
 
@@ -190,7 +191,7 @@ def validate_marker_data(
     """
     if markers is None:
         return None
-    
+
     if isinstance(markers, np.ndarray):
         if markers.ndim != 2:
             raise ValidationError(
@@ -204,20 +205,20 @@ def validate_marker_data(
         raise ValidationError(
             f"Markers must be np.ndarray or pd.DataFrame, got {type(markers)}"
         )
-    
+
     if len(markers) != n_cells:
         raise ValidationError(
             f"Marker data rows ({len(markers)}) does not match "
             f"number of cells ({n_cells})"
         )
-    
+
     # Check for non-numeric columns
     non_numeric = markers.select_dtypes(exclude=[np.number]).columns.tolist()
     if non_numeric:
         raise ValidationError(
             f"Marker data contains non-numeric columns: {non_numeric}"
         )
-    
+
     return markers
 
 
@@ -239,12 +240,12 @@ def validate_metadata(
     """
     if metadata is None:
         return {}
-    
+
     if not isinstance(metadata, dict):
         raise ValidationError(
             f"Metadata must be a dictionary, got {type(metadata)}"
         )
-    
+
     return dict(metadata)  # Return a copy
 
 
@@ -277,15 +278,15 @@ def validate_positive_number(
     """
     if not isinstance(value, (int, float)):
         raise ValidationError(f"{name} must be numeric, got {type(value)}")
-    
+
     if np.isnan(value) or np.isinf(value):
         raise ValidationError(f"{name} must be finite, got {value}")
-    
+
     if allow_zero:
         if value < 0:
             raise ValidationError(f"{name} must be non-negative, got {value}")
     else:
         if value <= 0:
             raise ValidationError(f"{name} must be positive, got {value}")
-    
+
     return value

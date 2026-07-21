@@ -28,14 +28,22 @@ Users can register custom metrics using either:
 """
 
 from __future__ import annotations
-from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, List, Optional,
-    Type, Union, get_type_hints
-)
-from dataclasses import dataclass, field
+
 import functools
 import inspect
 import warnings
+from dataclasses import dataclass, field
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Type,
+    Union,
+    get_type_hints,
+)
 
 if TYPE_CHECKING:
     from spatialtissuepy.core.spatial_data import SpatialTissueData
@@ -93,7 +101,7 @@ class MetricInfo:
 
     def __call__(
         self,
-        data: 'SpatialTissueData',
+        data: SpatialTissueData,
         **kwargs
     ) -> Dict[str, float]:
         """Call the metric function."""
@@ -442,7 +450,7 @@ class MetricRegistry:
 
             # Create wrapped function with output validation
             @functools.wraps(func)
-            def validated_func(data: 'SpatialTissueData', **kwargs) -> Dict[str, float]:
+            def validated_func(data: SpatialTissueData, **kwargs) -> Dict[str, float]:
                 result = func(data, **kwargs)
                 return _validate_metric_output(result, name)
 

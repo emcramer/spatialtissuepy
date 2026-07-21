@@ -6,7 +6,9 @@ spatial relationships.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+
+from typing import TYPE_CHECKING, Dict, List, Optional
+
 import numpy as np
 
 from .registry import register_metric
@@ -21,20 +23,20 @@ if TYPE_CHECKING:
     description='Total cell count and count per cell type',
     dynamic_columns=True
 )
-def cell_counts(data: 'SpatialTissueData') -> Dict[str, float]:
+def cell_counts(data: SpatialTissueData) -> Dict[str, float]:
     """
     Compute total and per-type cell counts.
-    
+
     Returns
     -------
     dict
         Keys: 'n_cells', 'n_{type}' for each cell type.
     """
     result = {'n_cells': float(data.n_cells)}
-    
+
     for cell_type, count in data.cell_type_counts.items():
         result[f'n_{cell_type}'] = float(count)
-    
+
     return result
 
 
@@ -44,10 +46,10 @@ def cell_counts(data: 'SpatialTissueData') -> Dict[str, float]:
     description='Proportion of each cell type',
     dynamic_columns=True
 )
-def cell_proportions(data: 'SpatialTissueData') -> Dict[str, float]:
+def cell_proportions(data: SpatialTissueData) -> Dict[str, float]:
     """
     Compute proportion of each cell type.
-    
+
     Returns
     -------
     dict
@@ -55,11 +57,11 @@ def cell_proportions(data: 'SpatialTissueData') -> Dict[str, float]:
     """
     total = data.n_cells
     result = {}
-    
+
     for cell_type, count in data.cell_type_counts.items():
         prop = count / total if total > 0 else 0.0
         result[f'prop_{cell_type}'] = prop
-    
+
     return result
 
 
@@ -70,13 +72,13 @@ def cell_proportions(data: 'SpatialTissueData') -> Dict[str, float]:
     parameters={'numerator': str, 'denominator': str}
 )
 def cell_type_ratio(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     numerator: str,
     denominator: str,
 ) -> Dict[str, float]:
     """
     Compute ratio of two cell type counts.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
@@ -85,22 +87,22 @@ def cell_type_ratio(
         Cell type for numerator.
     denominator : str
         Cell type for denominator.
-    
+
     Returns
     -------
     dict
         Key: '{numerator}_{denominator}_ratio'.
     """
     counts = data.cell_type_counts
-    
+
     num = counts.get(numerator, 0)
     denom = counts.get(denominator, 0)
-    
+
     if denom == 0:
         ratio = np.nan if num == 0 else np.inf
     else:
         ratio = num / denom
-    
+
     return {f'{numerator}_{denominator}_ratio': ratio}
 
 
@@ -110,10 +112,10 @@ def cell_type_ratio(
     description='Cell density (cells per unit area)',
     dynamic_columns=True
 )
-def cell_density(data: 'SpatialTissueData') -> Dict[str, float]:
+def cell_density(data: SpatialTissueData) -> Dict[str, float]:
     """
     Compute cell density (cells per unit area).
-    
+
     Returns
     -------
     dict
@@ -121,15 +123,15 @@ def cell_density(data: 'SpatialTissueData') -> Dict[str, float]:
     """
     extent = data.extent
     area = extent['x'] * extent['y']
-    
+
     if area == 0:
         return {'density_total': np.nan}
-    
+
     result = {'density_total': data.n_cells / area}
-    
+
     for cell_type, count in data.cell_type_counts.items():
         result[f'density_{cell_type}'] = count / area
-    
+
     return result
 
 
@@ -140,19 +142,19 @@ def cell_density(data: 'SpatialTissueData') -> Dict[str, float]:
     parameters={'normalize': bool}
 )
 def shannon_diversity(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     normalize: bool = True
 ) -> Dict[str, float]:
     """
     Compute Shannon diversity index.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
         Input data.
     normalize : bool, default True
         If True, normalize by maximum possible diversity.
-    
+
     Returns
     -------
     dict
@@ -160,20 +162,20 @@ def shannon_diversity(
     """
     counts = data.cell_type_counts
     total = counts.sum()
-    
+
     if total == 0:
         return {'shannon_diversity': np.nan}
-    
+
     props = counts / total
     props = props[props > 0]  # Remove zeros
-    
+
     entropy = -np.sum(props * np.log(props))
-    
+
     if normalize:
         max_entropy = np.log(len(counts))
         if max_entropy > 0:
             entropy = entropy / max_entropy
-    
+
     return {'shannon_diversity': entropy}
 
 
@@ -183,10 +185,10 @@ def shannon_diversity(
     description='Simpson diversity index (Gini-Simpson)',
     parameters={}
 )
-def simpson_diversity(data: 'SpatialTissueData') -> Dict[str, float]:
+def simpson_diversity(data: SpatialTissueData) -> Dict[str, float]:
     """
     Compute Simpson diversity index (1 - sum(p_i^2)).
-    
+
     Returns
     -------
     dict
@@ -194,13 +196,13 @@ def simpson_diversity(data: 'SpatialTissueData') -> Dict[str, float]:
     """
     counts = data.cell_type_counts
     total = counts.sum()
-    
+
     if total == 0:
         return {'simpson_diversity': np.nan}
-    
+
     props = counts / total
     simpson = 1 - np.sum(props ** 2)
-    
+
     return {'simpson_diversity': simpson}
 
 
@@ -212,13 +214,13 @@ def simpson_diversity(data: 'SpatialTissueData') -> Dict[str, float]:
     dynamic_columns=True
 )
 def marker_statistics(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     markers: Optional[List[str]] = None,
     stats: Optional[List[str]] = None,
 ) -> Dict[str, float]:
     """
     Compute marker expression statistics.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
@@ -228,7 +230,7 @@ def marker_statistics(
     stats : list of str, optional
         Statistics to compute: 'mean', 'std', 'median', 'p25', 'p75'.
         Default: ['mean'].
-    
+
     Returns
     -------
     dict
@@ -236,15 +238,15 @@ def marker_statistics(
     """
     if data.markers is None:
         return {}
-    
+
     if markers is None:
         markers = data.marker_names
-    
+
     if stats is None:
         stats = ['mean']
-    
+
     result = {}
-    
+
     stat_funcs = {
         'mean': np.nanmean,
         'std': np.nanstd,
@@ -254,19 +256,19 @@ def marker_statistics(
         'min': np.nanmin,
         'max': np.nanmax,
     }
-    
+
     for marker in markers:
         if marker not in data.marker_names:
             continue
-        
+
         values = data.markers[marker].values
-        
+
         # Global statistics
         for stat in stats:
             if stat in stat_funcs:
                 key = f'{marker}_{stat}'
                 result[key] = stat_funcs[stat](values)
-    
+
     return result
 
 
@@ -278,14 +280,14 @@ def marker_statistics(
     dynamic_columns=True
 )
 def marker_statistics_by_type(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     markers: Optional[List[str]] = None,
     stats: Optional[List[str]] = None,
     cell_types: Optional[List[str]] = None,
 ) -> Dict[str, float]:
     """
     Compute marker expression statistics stratified by cell type.
-    
+
     Parameters
     ----------
     data : SpatialTissueData
@@ -296,7 +298,7 @@ def marker_statistics_by_type(
         Statistics: 'mean', 'std', 'median'.
     cell_types : list of str, optional
         Cell types to include.
-    
+
     Returns
     -------
     dict
@@ -304,40 +306,40 @@ def marker_statistics_by_type(
     """
     if data.markers is None:
         return {}
-    
+
     if markers is None:
         markers = data.marker_names
-    
+
     if stats is None:
         stats = ['mean']
-    
+
     if cell_types is None:
         cell_types = list(data.cell_types_unique)
-    
+
     stat_funcs = {
         'mean': np.nanmean,
         'std': np.nanstd,
         'median': np.nanmedian,
     }
-    
+
     result = {}
-    
+
     for marker in markers:
         if marker not in data.marker_names:
             continue
-        
+
         for cell_type in cell_types:
             mask = data.cell_types == cell_type
             if mask.sum() == 0:
                 continue
-            
+
             values = data.markers.loc[mask, marker].values
-            
+
             for stat in stats:
                 if stat in stat_funcs:
                     key = f'{marker}_{cell_type}_{stat}'
                     result[key] = stat_funcs[stat](values)
-    
+
     return result
 
 
@@ -346,27 +348,27 @@ def marker_statistics_by_type(
     category='morphology',
     description='Spatial extent of the tissue sample',
 )
-def spatial_extent(data: 'SpatialTissueData') -> Dict[str, float]:
+def spatial_extent(data: SpatialTissueData) -> Dict[str, float]:
     """
     Compute spatial extent metrics.
-    
+
     Returns
     -------
     dict
         Keys: 'extent_x', 'extent_y', 'extent_area', 'extent_z' (if 3D).
     """
     extent = data.extent
-    
+
     result = {
         'extent_x': extent['x'],
         'extent_y': extent['y'],
         'extent_area': extent['x'] * extent['y'],
     }
-    
+
     if 'z' in extent:
         result['extent_z'] = extent['z']
         result['extent_volume'] = extent['x'] * extent['y'] * extent['z']
-    
+
     return result
 
 
@@ -375,10 +377,10 @@ def spatial_extent(data: 'SpatialTissueData') -> Dict[str, float]:
     category='morphology',
     description='Centroid of all cells',
 )
-def centroid(data: 'SpatialTissueData') -> Dict[str, float]:
+def centroid(data: SpatialTissueData) -> Dict[str, float]:
     """
     Compute centroid of all cells.
-    
+
     Returns
     -------
     dict
@@ -386,13 +388,13 @@ def centroid(data: 'SpatialTissueData') -> Dict[str, float]:
     """
     coords = data.coordinates
     center = coords.mean(axis=0)
-    
+
     result = {
         'centroid_x': center[0],
         'centroid_y': center[1],
     }
-    
+
     if coords.shape[1] > 2:
         result['centroid_z'] = center[2]
-    
+
     return result

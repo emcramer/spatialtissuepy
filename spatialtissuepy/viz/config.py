@@ -7,9 +7,16 @@ figure export.
 """
 
 from __future__ import annotations
-from typing import Dict, List, Optional, Tuple, Union, Any
+
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+
 import numpy as np
+
+if TYPE_CHECKING:
+    # Annotations only; matplotlib stays an optional runtime dependency and is
+    # imported lazily inside the functions that need it.
+    import matplotlib.pyplot as plt
 
 # Lazy imports for matplotlib
 _MPL_AVAILABLE = None
@@ -20,7 +27,7 @@ def _check_matplotlib():
     global _MPL_AVAILABLE
     if _MPL_AVAILABLE is None:
         try:
-            import matplotlib
+            import matplotlib  # noqa: F401 (optional dependency probe)
             _MPL_AVAILABLE = True
         except ImportError:
             _MPL_AVAILABLE = False
@@ -51,19 +58,19 @@ CELL_TYPE_COLORS = {
     'NK_cell': '#8c564b',      # Brown
     'Neutrophil': '#e377c2',   # Pink
     'Monocyte': '#7f7f7f',     # Gray
-    
+
     # Tumor cells
     'Tumor': '#d62728',        # Red
     'Cancer': '#d62728',
     'Tumor_proliferating': '#ff9896',
     'Tumor_hypoxic': '#8b0000',
-    
+
     # Stromal cells
     'Fibroblast': '#bcbd22',   # Yellow-green
     'CAF': '#bcbd22',
     'Endothelial': '#17becf',  # Cyan
     'Epithelial': '#98df8a',   # Light green
-    
+
     # Other
     'Unknown': '#c7c7c7',
     'Other': '#c7c7c7',
@@ -115,7 +122,7 @@ DIVERGING_CMAPS = {
 class PlotConfig:
     """
     Configuration class for plot styling.
-    
+
     Attributes
     ----------
     figsize : tuple
@@ -152,23 +159,23 @@ class PlotConfig:
     line_width: float = 1.5
     marker_size: float = 20
     alpha: float = 0.7
-    
+
     # Color settings
     cell_type_colors: Dict[str, str] = field(default_factory=lambda: CELL_TYPE_COLORS.copy())
     categorical_palette: str = 'default'
     sequential_cmap: str = 'viridis'
     diverging_cmap: str = 'RdBu_r'
-    
+
     # Grid and spines
     show_grid: bool = False
     grid_alpha: float = 0.3
     despine: bool = True
-    
+
     def apply(self):
         """Apply this configuration to matplotlib."""
         _check_matplotlib()
         import matplotlib.pyplot as plt
-        
+
         plt.rcParams.update({
             'figure.figsize': self.figsize,
             'figure.dpi': self.dpi,
@@ -212,14 +219,14 @@ def set_publication_style(
 ) -> PlotConfig:
     """
     Set matplotlib style for publication-quality figures.
-    
+
     Parameters
     ----------
     journal : str, default 'default'
         Target journal style: 'default', 'nature', 'science', 'cell'.
     column_width : str, default 'single'
         Column width: 'single', 'double', 'full'.
-        
+
     Returns
     -------
     PlotConfig
@@ -227,7 +234,7 @@ def set_publication_style(
     """
     _check_matplotlib()
     import matplotlib.pyplot as plt
-    
+
     # Journal-specific widths (inches)
     widths = {
         'default': {'single': 3.5, 'double': 7.0, 'full': 7.5},
@@ -235,10 +242,10 @@ def set_publication_style(
         'science': {'single': 3.4, 'double': 7.0, 'full': 7.0},
         'cell': {'single': 3.3, 'double': 6.9, 'full': 7.0},
     }
-    
+
     width = widths.get(journal, widths['default']).get(column_width, 3.5)
     height = width * 0.75  # Default aspect ratio
-    
+
     config = PlotConfig(
         figsize=(width, height),
         dpi=300,
@@ -254,9 +261,9 @@ def set_publication_style(
         show_grid=False,
         despine=True,
     )
-    
+
     set_config(config)
-    
+
     # Additional matplotlib settings for publication
     plt.rcParams.update({
         'pdf.fonttype': 42,  # TrueType fonts for PDF
@@ -268,14 +275,14 @@ def set_publication_style(
         'xtick.major.size': 3,
         'ytick.major.size': 3,
     })
-    
+
     return config
 
 
 def set_default_style() -> PlotConfig:
     """
     Reset to default plotting style.
-    
+
     Returns
     -------
     PlotConfig
@@ -283,26 +290,26 @@ def set_default_style() -> PlotConfig:
     """
     _check_matplotlib()
     import matplotlib.pyplot as plt
-    
+
     plt.rcdefaults()
-    
+
     config = PlotConfig()
     set_config(config)
-    
+
     return config
 
 
 def set_presentation_style() -> PlotConfig:
     """
     Set style for presentations (larger fonts, bolder lines).
-    
+
     Returns
     -------
     PlotConfig
         Applied configuration.
     """
     _check_matplotlib()
-    
+
     config = PlotConfig(
         figsize=(10, 7),
         dpi=150,
@@ -317,9 +324,9 @@ def set_presentation_style() -> PlotConfig:
         show_grid=False,
         despine=True,
     )
-    
+
     set_config(config)
-    
+
     return config
 
 
@@ -333,28 +340,28 @@ def get_cell_type_colors(
 ) -> Dict[str, str]:
     """
     Get color mapping for cell types.
-    
+
     Parameters
     ----------
     cell_types : list of str, optional
         Cell types to get colors for. If None, returns all known colors.
     palette : str, default 'default'
         Palette to use for unknown cell types.
-        
+
     Returns
     -------
     dict
         Mapping from cell type to hex color.
     """
     colors = _current_config.cell_type_colors.copy()
-    
+
     if cell_types is None:
         return colors
-    
+
     # Add colors for unknown types
     palette_colors = CATEGORICAL_PALETTES.get(palette, CATEGORICAL_PALETTES['default'])
     unknown_idx = 0
-    
+
     result = {}
     for ct in cell_types:
         if ct in colors:
@@ -362,7 +369,7 @@ def get_cell_type_colors(
         else:
             result[ct] = palette_colors[unknown_idx % len(palette_colors)]
             unknown_idx += 1
-    
+
     return result
 
 
@@ -372,29 +379,29 @@ def get_categorical_palette(
 ) -> List[str]:
     """
     Get a categorical color palette.
-    
+
     Parameters
     ----------
     n_colors : int
         Number of colors needed.
     palette : str, default 'default'
         Palette name: 'default', 'colorblind', 'pastel', 'dark'.
-        
+
     Returns
     -------
     list of str
         List of hex colors.
     """
     colors = CATEGORICAL_PALETTES.get(palette, CATEGORICAL_PALETTES['default'])
-    
+
     if n_colors <= len(colors):
         return colors[:n_colors]
-    
+
     # Extend by cycling
     extended = []
     for i in range(n_colors):
         extended.append(colors[i % len(colors)])
-    
+
     return extended
 
 
@@ -403,12 +410,12 @@ def get_sequential_cmap(
 ) -> str:
     """
     Get a sequential colormap name.
-    
+
     Parameters
     ----------
     name : str, default 'density'
         Type of data: 'density', 'expression', 'distance', 'enrichment', 'count'.
-        
+
     Returns
     -------
     str
@@ -422,12 +429,12 @@ def get_diverging_cmap(
 ) -> str:
     """
     Get a diverging colormap name.
-    
+
     Parameters
     ----------
     name : str, default 'correlation'
         Type of data: 'correlation', 'log_fold_change', 'residual', 'difference'.
-        
+
     Returns
     -------
     str
@@ -445,10 +452,10 @@ def create_figure(
     ncols: int = 1,
     figsize: Optional[Tuple[float, float]] = None,
     **kwargs
-) -> Tuple['plt.Figure', Union['plt.Axes', np.ndarray]]:
+) -> Tuple[plt.Figure, Union[plt.Axes, np.ndarray]]:
     """
     Create a figure with consistent styling.
-    
+
     Parameters
     ----------
     nrows : int, default 1
@@ -459,7 +466,7 @@ def create_figure(
         Figure size. If None, uses config default scaled by grid.
     **kwargs
         Additional arguments to plt.subplots().
-        
+
     Returns
     -------
     fig : plt.Figure
@@ -469,18 +476,18 @@ def create_figure(
     """
     _check_matplotlib()
     import matplotlib.pyplot as plt
-    
+
     if figsize is None:
         base = _current_config.figsize
         figsize = (base[0] * ncols, base[1] * nrows)
-    
+
     fig, axes = plt.subplots(nrows, ncols, figsize=figsize, **kwargs)
-    
+
     return fig, axes
 
 
 def save_figure(
-    fig: 'plt.Figure',
+    fig: plt.Figure,
     filename: str,
     formats: List[str] = None,
     dpi: Optional[int] = None,
@@ -490,7 +497,7 @@ def save_figure(
 ):
     """
     Save figure in multiple formats.
-    
+
     Parameters
     ----------
     fig : plt.Figure
@@ -509,13 +516,13 @@ def save_figure(
         Additional arguments to fig.savefig().
     """
     _check_matplotlib()
-    
+
     if formats is None:
         formats = ['pdf', 'png']
-    
+
     if dpi is None:
         dpi = _current_config.dpi
-    
+
     for fmt in formats:
         output_path = f"{filename}.{fmt}"
         fig.savefig(
@@ -529,7 +536,7 @@ def save_figure(
 
 
 def despine(
-    ax: 'plt.Axes',
+    ax: plt.Axes,
     left: bool = False,
     bottom: bool = False,
     right: bool = True,
@@ -537,7 +544,7 @@ def despine(
 ):
     """
     Remove spines from axes.
-    
+
     Parameters
     ----------
     ax : plt.Axes
@@ -545,13 +552,13 @@ def despine(
     left, bottom, right, top : bool
         Which spines to remove.
     """
-    for spine, remove in [('left', left), ('bottom', bottom), 
+    for spine, remove in [('left', left), ('bottom', bottom),
                           ('right', right), ('top', top)]:
         ax.spines[spine].set_visible(not remove)
 
 
 def add_scalebar(
-    ax: 'plt.Axes',
+    ax: plt.Axes,
     length: float,
     unit: str = 'µm',
     location: str = 'lower right',
@@ -560,7 +567,7 @@ def add_scalebar(
 ):
     """
     Add a scale bar to spatial plots.
-    
+
     Parameters
     ----------
     ax : plt.Axes
@@ -578,33 +585,32 @@ def add_scalebar(
     """
     _check_matplotlib()
     from matplotlib.patches import Rectangle
-    from matplotlib.offsetbox import AnchoredOffsetbox, AuxTransformBox
-    
+
     if fontsize is None:
         fontsize = _current_config.tick_size
-    
+
     # Get axes limits
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
-    
+
     # Position based on location
     if 'lower' in location:
         y = ylim[0] + 0.05 * (ylim[1] - ylim[0])
     else:
         y = ylim[1] - 0.1 * (ylim[1] - ylim[0])
-    
+
     if 'right' in location:
         x = xlim[1] - 0.05 * (xlim[0] - xlim[0]) - length
     else:
         x = xlim[0] + 0.05 * (xlim[1] - xlim[0])
-    
+
     # Draw scale bar
     bar_height = 0.01 * (ylim[1] - ylim[0])
     ax.add_patch(Rectangle(
         (x, y), length, bar_height,
         facecolor=color, edgecolor=color
     ))
-    
+
     # Add label
     ax.text(
         x + length / 2, y - bar_height * 2,
@@ -615,19 +621,19 @@ def add_scalebar(
 
 
 def get_axes(
-    ax: Optional['plt.Axes'] = None,
+    ax: Optional[plt.Axes] = None,
     figsize: Optional[Tuple[float, float]] = None
-) -> 'plt.Axes':
+) -> plt.Axes:
     """
     Get or create axes for plotting.
-    
+
     Parameters
     ----------
     ax : plt.Axes, optional
         Existing axes. If None, creates new figure.
     figsize : tuple, optional
         Figure size if creating new figure.
-        
+
     Returns
     -------
     plt.Axes
@@ -635,10 +641,10 @@ def get_axes(
     """
     _check_matplotlib()
     import matplotlib.pyplot as plt
-    
+
     if ax is None:
         if figsize is None:
             figsize = _current_config.figsize
         fig, ax = plt.subplots(figsize=figsize)
-    
+
     return ax

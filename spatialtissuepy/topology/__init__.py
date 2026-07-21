@@ -69,49 +69,48 @@ Example
 >>> plot_mapper_graph(result)
 """
 
-from .mapper import SpatialMapper, MapperResult, spatial_mapper
-from .cover import Cover, UniformCover, AdaptiveCover, BallCover, create_cover
-from .nerve import MapperNode, MapperEdge
+# Analysis functions
+from .analysis import (
+    cell_mapper_features,
+    cells_in_multiple_nodes,
+    compare_mapper_results,
+    component_statistics,
+    edge_summary_dataframe,
+    extract_mapper_features,
+    find_bridge_nodes,
+    find_hub_nodes,
+    get_component_cells,
+    mapper_stability_score,
+    node_summary_dataframe,
+    optimal_n_intervals,
+    uncovered_cells,
+)
+from .cover import AdaptiveCover, BallCover, Cover, UniformCover, create_cover
 
 # Filter functions
 from .filters import (
-    density_filter,
-    pca_filter,
-    eccentricity_filter,
-    linfinity_centrality_filter,
-    sum_filter,
-    entropy_filter,
     constant_filter,
+    density_filter,
+    eccentricity_filter,
+    entropy_filter,
+    linfinity_centrality_filter,
+    pca_filter,
+    sum_filter,
 )
+from .mapper import MapperResult, SpatialMapper, spatial_mapper
+from .nerve import MapperEdge, MapperNode
 
 # Spatial filters
 from .spatial_filters import (
-    spatial_coordinate_filter,
-    radial_filter,
-    distance_to_type_filter,
-    distance_to_boundary_filter,
-    spatial_density_filter,
-    gaussian_smoothed_filter,
     composite_filter,
+    distance_to_boundary_filter,
+    distance_to_type_filter,
+    gaussian_smoothed_filter,
     multiscale_spatial_filter,
+    radial_filter,
+    spatial_coordinate_filter,
+    spatial_density_filter,
     type_proportion_filter,
-)
-
-# Analysis functions
-from .analysis import (
-    node_summary_dataframe,
-    edge_summary_dataframe,
-    find_hub_nodes,
-    find_bridge_nodes,
-    component_statistics,
-    get_component_cells,
-    compare_mapper_results,
-    extract_mapper_features,
-    cell_mapper_features,
-    cells_in_multiple_nodes,
-    uncovered_cells,
-    mapper_stability_score,
-    optimal_n_intervals,
 )
 
 __all__ = [
@@ -122,7 +121,7 @@ __all__ = [
     # Cover classes
     'Cover',
     'UniformCover',
-    'AdaptiveCover', 
+    'AdaptiveCover',
     'BallCover',
     'create_cover',
     # Nerve classes

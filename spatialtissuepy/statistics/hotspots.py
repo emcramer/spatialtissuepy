@@ -20,11 +20,13 @@ References
 """
 
 from __future__ import annotations
-from typing import Optional, Dict, List, Tuple, TYPE_CHECKING
+
+from typing import TYPE_CHECKING, Dict, Optional, Union
+
 import numpy as np
-from scipy.spatial import cKDTree
-from scipy import stats
 import pandas as pd
+from scipy import stats
+from scipy.spatial import cKDTree
 
 if TYPE_CHECKING:
     from spatialtissuepy.core import SpatialTissueData
@@ -35,7 +37,7 @@ if TYPE_CHECKING:
 # -----------------------------------------------------------------------------
 
 def getis_ord_gi_star(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     values: np.ndarray,
     radius: float,
     standardize: bool = True,
@@ -80,55 +82,55 @@ def getis_ord_gi_star(
     """
     n = len(values)
     values = np.asarray(values, dtype=float)
-    
+
     # Global statistics
     x_bar = np.mean(values)
     s = np.std(values, ddof=0)
-    
+
     if s == 0:
         return np.zeros(n)
-    
+
     # Build KD-tree
     tree = cKDTree(data._coordinates)
-    
+
     gi_star = np.zeros(n)
-    
+
     for i in range(n):
         # Get neighbors including self
         neighbors = tree.query_ball_point(data._coordinates[i], radius)
-        
+
         if len(neighbors) == 0:
             gi_star[i] = 0
             continue
-        
+
         # Sum of neighbor values (including self)
         neighbor_sum = np.sum(values[neighbors])
         w_i = len(neighbors)  # Number of neighbors (binary weights)
-        
+
         # Gi* statistic
         numerator = neighbor_sum - x_bar * w_i
-        
+
         # Denominator (standard error)
         denominator = s * np.sqrt((n * w_i - w_i**2) / (n - 1))
-        
+
         if denominator > 0:
             gi_star[i] = numerator / denominator
         else:
             gi_star[i] = 0
-    
+
     if not standardize:
         # Return raw Gi* (not z-score)
         result = gi_star * s / x_bar if x_bar != 0 else gi_star
     else:
         result = gi_star
-    
+
     if return_dict:
         return {'gi_star': result}
     return result
 
 
 def getis_ord_gi(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     values: np.ndarray,
     radius: float
 ) -> np.ndarray:
@@ -157,36 +159,36 @@ def getis_ord_gi(
     """
     n = len(values)
     values = np.asarray(values, dtype=float)
-    
+
     x_bar = np.mean(values)
     s = np.std(values, ddof=0)
-    
+
     if s == 0:
         return np.zeros(n)
-    
+
     tree = cKDTree(data._coordinates)
     gi = np.zeros(n)
-    
+
     for i in range(n):
         # Get neighbors excluding self
         neighbors = tree.query_ball_point(data._coordinates[i], radius)
         neighbors = [j for j in neighbors if j != i]
-        
+
         if len(neighbors) == 0:
             gi[i] = 0
             continue
-        
+
         neighbor_sum = np.sum(values[neighbors])
         w_i = len(neighbors)
-        
+
         numerator = neighbor_sum - x_bar * w_i
         denominator = s * np.sqrt((n * w_i - w_i**2) / (n - 1))
-        
+
         if denominator > 0:
             gi[i] = numerator / denominator
         else:
             gi[i] = 0
-    
+
     return gi
 
 
@@ -195,7 +197,7 @@ def getis_ord_gi(
 # -----------------------------------------------------------------------------
 
 def local_morans_i(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     values: np.ndarray,
     radius: float,
     permutations: int = 0,
@@ -236,85 +238,85 @@ def local_morans_i(
     """
     n = len(values)
     values = np.asarray(values, dtype=float)
-    
+
     # Standardize values
     z = (values - np.mean(values)) / np.std(values, ddof=0)
     z = np.nan_to_num(z, nan=0)
-    
+
     tree = cKDTree(data._coordinates)
-    
+
     I_local = np.zeros(n)
     lag = np.zeros(n)  # Spatial lag
-    
+
     for i in range(n):
         neighbors = tree.query_ball_point(data._coordinates[i], radius)
         neighbors = [j for j in neighbors if j != i]
-        
+
         if len(neighbors) == 0:
             I_local[i] = 0
             lag[i] = 0
             continue
-        
+
         # Spatial lag (mean of neighbors' standardized values)
         lag[i] = np.mean(z[neighbors])
-        
+
         # Local Moran's I
         I_local[i] = z[i] * lag[i]
-    
+
     # Determine quadrants
     quadrant = np.zeros(n, dtype=int)
     quadrant[(z > 0) & (lag > 0)] = 1  # HH
     quadrant[(z < 0) & (lag > 0)] = 2  # LH
     quadrant[(z < 0) & (lag < 0)] = 3  # LL
     quadrant[(z > 0) & (lag < 0)] = 4  # HL
-    
+
     # Analytical p-values (simplified)
     # Variance approximation
     E_I = -1 / (n - 1)
-    
+
     zscore = np.zeros(n)
     pvalue = np.ones(n)
-    
+
     for i in range(n):
         neighbors = tree.query_ball_point(data._coordinates[i], radius)
         neighbors = [j for j in neighbors if j != i]
-        
+
         if len(neighbors) == 0:
             continue
-        
+
         w_i = len(neighbors)
         var_I = (w_i * (n - 3)) / ((n - 1) * (n + 1))
-        
+
         if var_I > 0:
             zscore[i] = (I_local[i] - E_I) / np.sqrt(var_I)
             pvalue[i] = 2 * (1 - stats.norm.cdf(abs(zscore[i])))
-    
+
     # Permutation p-values if requested
     if permutations > 0:
         rng = np.random.default_rng(seed)
         pvalue = np.zeros(n)
-        
+
         for i in range(n):
             neighbors = tree.query_ball_point(data._coordinates[i], radius)
             neighbors = [j for j in neighbors if j != i]
-            
+
             if len(neighbors) == 0:
                 pvalue[i] = 1.0
                 continue
-            
+
             observed_I = I_local[i]
             count_extreme = 0
-            
+
             for _ in range(permutations):
                 perm_idx = rng.choice(n, size=len(neighbors), replace=False)
                 perm_lag = np.mean(z[perm_idx])
                 perm_I = z[i] * perm_lag
-                
+
                 if abs(perm_I) >= abs(observed_I):
                     count_extreme += 1
-            
+
             pvalue[i] = (count_extreme + 1) / (permutations + 1)
-    
+
     return {
         'I': I_local,
         'zscore': zscore,
@@ -329,7 +331,7 @@ def local_morans_i(
 # -----------------------------------------------------------------------------
 
 def detect_hotspots(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     values: np.ndarray,
     radius: float,
     method: str = 'gi_star',
@@ -370,9 +372,9 @@ def detect_hotspots(
     """
     if 'significance' in kwargs:
         alpha = kwargs.pop('significance')
-    
+
     n = len(values)
-    
+
     if method == 'gi_star':
         statistic = getis_ord_gi_star(data, values, radius)
         pvalue = 2 * (1 - stats.norm.cdf(np.abs(statistic)))
@@ -385,7 +387,7 @@ def detect_hotspots(
         pvalue = result['pvalue']
     else:
         raise ValueError(f"Unknown method: {method}")
-    
+
     # Apply multiple testing correction
     if correction == 'bonferroni':
         adjusted_alpha = alpha / n
@@ -393,26 +395,26 @@ def detect_hotspots(
         # Benjamini-Hochberg FDR
         sorted_idx = np.argsort(pvalue)
         sorted_pval = pvalue[sorted_idx]
-        
+
         adjusted_pval = np.zeros(n)
         for i, idx in enumerate(sorted_idx):
             rank = i + 1
             adjusted_pval[idx] = sorted_pval[i] * n / rank
-        
+
         # Ensure monotonicity
         for i in range(n - 2, -1, -1):
             if adjusted_pval[sorted_idx[i]] > adjusted_pval[sorted_idx[i + 1]]:
                 adjusted_pval[sorted_idx[i]] = adjusted_pval[sorted_idx[i + 1]]
-        
+
         pvalue = np.minimum(adjusted_pval, 1.0)
         adjusted_alpha = alpha
     else:
         adjusted_alpha = alpha
-    
+
     # Identify hotspots and coldspots
     is_hotspot = (statistic > 0) & (pvalue < adjusted_alpha)
     is_coldspot = (statistic < 0) & (pvalue < adjusted_alpha)
-    
+
     return {
         'statistic': statistic,
         'pvalue': pvalue,
@@ -424,7 +426,7 @@ def detect_hotspots(
 
 
 def cell_type_hotspots(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     cell_type: str,
     radius: float,
     method: str = 'gi_star',
@@ -465,12 +467,12 @@ def cell_type_hotspots(
     """
     # Create binary indicator for cell type
     indicator = (data._cell_types == cell_type).astype(float)
-    
+
     return detect_hotspots(data, indicator, radius, method, alpha, **kwargs)
 
 
 def marker_hotspots(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     marker: str,
     radius: float,
     method: str = 'gi_star',
@@ -502,12 +504,12 @@ def marker_hotspots(
     """
     if data.markers is None:
         raise ValueError("No marker data available")
-    
+
     if marker not in data.marker_names:
         raise ValueError(f"Marker not found: {marker}")
-    
+
     values = data.markers[marker].values
-    
+
     return detect_hotspots(data, values, radius, method, alpha, **kwargs)
 
 
@@ -516,7 +518,7 @@ def marker_hotspots(
 # -----------------------------------------------------------------------------
 
 def hotspot_statistics(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     hotspot_result: Dict[str, np.ndarray]
 ) -> Dict[str, float]:
     """
@@ -540,13 +542,13 @@ def hotspot_statistics(
         - hotspot_types: Cell type composition of hotspots
     """
     n_total = data.n_cells
-    
+
     hotspot_idx = hotspot_result.get('hotspot_idx', np.array([]))
     coldspot_idx = hotspot_result.get('coldspot_idx', np.array([]))
-    
+
     n_hotspots = len(hotspot_idx)
     n_coldspots = len(coldspot_idx)
-    
+
     # Cell type composition of hotspots
     if n_hotspots > 0:
         hotspot_types, counts = np.unique(
@@ -555,7 +557,7 @@ def hotspot_statistics(
         hotspot_composition = dict(zip(hotspot_types, counts.astype(int)))
     else:
         hotspot_composition = {}
-    
+
     # Cell type composition of coldspots
     if n_coldspots > 0:
         coldspot_types, counts = np.unique(
@@ -564,7 +566,7 @@ def hotspot_statistics(
         coldspot_composition = dict(zip(coldspot_types, counts.astype(int)))
     else:
         coldspot_composition = {}
-    
+
     return {
         'n_hotspots': n_hotspots,
         'n_coldspots': n_coldspots,
@@ -576,7 +578,7 @@ def hotspot_statistics(
 
 
 def hotspot_regions(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     hotspot_result: Dict[str, np.ndarray],
     merge_radius: float
 ) -> np.ndarray:
@@ -597,37 +599,37 @@ def hotspot_regions(
     np.ndarray
         Region labels for each cell (-1 for non-hotspot cells).
     """
-    from scipy.sparse.csgraph import connected_components
     from scipy.sparse import csr_matrix
-    
+    from scipy.sparse.csgraph import connected_components
+
     n_cells = data.n_cells
     hotspot_idx = hotspot_result.get('hotspot_idx', np.array([]))
-    
+
     if len(hotspot_idx) == 0:
         return np.full(n_cells, -1, dtype=int)
-    
+
     # Build graph of hotspot cells
     hotspot_coords = data._coordinates[hotspot_idx]
     tree = cKDTree(hotspot_coords)
-    
+
     # Find connected pairs
     pairs = tree.query_pairs(merge_radius, output_type='ndarray')
-    
+
     # Create adjacency matrix
     n_hotspots = len(hotspot_idx)
     row = np.concatenate([pairs[:, 0], pairs[:, 1]])
     col = np.concatenate([pairs[:, 1], pairs[:, 0]])
     data_vals = np.ones(len(row))
-    
+
     adj = csr_matrix((data_vals, (row, col)), shape=(n_hotspots, n_hotspots))
-    
+
     # Find connected components
     n_components, component_labels = connected_components(adj, directed=False)
-    
+
     # Map back to full cell array
     region_labels = np.full(n_cells, -1, dtype=int)
     region_labels[hotspot_idx] = component_labels
-    
+
     return region_labels
 
 
@@ -636,7 +638,7 @@ def hotspot_regions(
 # -----------------------------------------------------------------------------
 
 def hotspot_summary_by_type(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     radius: float,
     method: str = 'gi_star',
     alpha: float = 0.05
@@ -661,11 +663,11 @@ def hotspot_summary_by_type(
         Summary with columns for each cell type.
     """
     results = []
-    
+
     for cell_type in data.cell_types_unique:
         result = cell_type_hotspots(data, cell_type, radius, method, alpha)
         stats = hotspot_statistics(data, result)
-        
+
         results.append({
             'cell_type': cell_type,
             'n_cells': len(data.get_cells_by_type(cell_type)),
@@ -674,5 +676,5 @@ def hotspot_summary_by_type(
             'hotspot_fraction': stats['hotspot_fraction'],
             'coldspot_fraction': stats['coldspot_fraction'],
         })
-    
+
     return pd.DataFrame(results).set_index('cell_type')

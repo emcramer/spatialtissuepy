@@ -5,7 +5,8 @@ This module registers spatial operation metrics with the StatisticsPanel
 for standardized computation across samples.
 """
 
-from typing import Dict, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
+
 import numpy as np
 
 from spatialtissuepy.summary.registry import register_metric
@@ -39,7 +40,7 @@ def _mean_nnd(data: 'SpatialTissueData', k: int = 1) -> Dict[str, float]:
 def _mean_nnd_by_type(data: 'SpatialTissueData', k: int = 1) -> Dict[str, float]:
     """Compute mean NND for each cell type."""
     from .distance import mean_nearest_neighbor_distance
-    
+
     result = {}
     for cell_type in data.cell_types_unique:
         idx = data.get_cells_by_type(cell_type)
@@ -59,12 +60,12 @@ def _mean_nnd_by_type(data: 'SpatialTissueData', k: int = 1) -> Dict[str, float]
     parameters={'target_type': str}
 )
 def _mean_dist_to_type(
-    data: 'SpatialTissueData', 
+    data: 'SpatialTissueData',
     target_type: str
 ) -> Dict[str, float]:
     """Compute mean distance to target cell type."""
     from .distance import distance_to_type
-    
+
     try:
         distances = distance_to_type(data, target_type)
         return {f'mean_distance_to_{target_type}': float(np.mean(distances))}
@@ -99,7 +100,7 @@ def _point_density_by_type(
 ) -> Dict[str, float]:
     """Compute density for each cell type."""
     from .distance import point_density
-    
+
     result = {}
     for cell_type in data.cell_types_unique:
         idx = data.get_cells_by_type(cell_type)
@@ -130,7 +131,7 @@ def _mean_neighborhood_size(
 ) -> Dict[str, float]:
     """Compute mean neighborhood size."""
     from .neighborhood import compute_neighborhoods, neighborhood_size
-    
+
     neighborhoods = compute_neighborhoods(data, method=method, radius=radius, k=k)
     sizes = neighborhood_size(neighborhoods)
     return {
@@ -153,7 +154,7 @@ def _mean_neighborhood_diversity(
 ) -> Dict[str, float]:
     """Compute mean neighborhood diversity."""
     from .neighborhood import compute_neighborhoods, neighborhood_diversity
-    
+
     neighborhoods = compute_neighborhoods(data, method=method, radius=radius, k=k)
     diversity = neighborhood_diversity(data, neighborhoods, metric='shannon')
     return {'mean_neighborhood_diversity': float(np.mean(diversity))}
@@ -173,7 +174,7 @@ def _type_enrichment(
 ) -> Dict[str, float]:
     """Compute mean neighborhood enrichment for target type."""
     from .neighborhood import compute_neighborhoods, neighborhood_enrichment
-    
+
     neighborhoods = compute_neighborhoods(data, method=method, radius=radius)
     enrichment = neighborhood_enrichment(data, neighborhoods, target_type)
     return {
@@ -197,15 +198,15 @@ def _interface_fraction(
 ) -> Dict[str, float]:
     """Compute fraction of cells at type interface."""
     from .neighborhood import interface_cells
-    
+
     try:
         a_interface, b_interface = interface_cells(
             data, type_a, type_b, radius, min_neighbors
         )
-        
+
         n_a = len(data.get_cells_by_type(type_a))
         n_b = len(data.get_cells_by_type(type_b))
-        
+
         return {
             f'interface_fraction_{type_a}': len(a_interface) / max(n_a, 1),
             f'interface_fraction_{type_b}': len(b_interface) / max(n_b, 1),
@@ -233,11 +234,11 @@ def _n_spatial_clusters(
     min_samples: int = 5
 ) -> Dict[str, float]:
     """Count number of spatial clusters."""
-    from .clustering import dbscan_clustering, cluster_statistics
-    
+    from .clustering import cluster_statistics, dbscan_clustering
+
     labels = dbscan_clustering(data, eps=eps, min_samples=min_samples)
     stats = cluster_statistics(data, labels)
-    
+
     return {
         'n_spatial_clusters': stats['n_clusters'],
         'spatial_cluster_noise_fraction': stats['noise_fraction'],
@@ -257,14 +258,14 @@ def _n_clusters_by_type(
 ) -> Dict[str, float]:
     """Count clusters per cell type."""
     from .clustering import dbscan_by_type
-    
+
     results = dbscan_by_type(data, eps=eps, min_samples=min_samples)
-    
+
     output = {}
     for cell_type, labels in results.items():
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
         output[f'n_clusters_{cell_type}'] = n_clusters
-    
+
     return output
 
 
@@ -280,11 +281,11 @@ def _spatial_cluster_purity(
     min_samples: int = 5
 ) -> Dict[str, float]:
     """Compute cluster purity."""
-    from .clustering import dbscan_clustering, cluster_purity
-    
+    from .clustering import cluster_purity, dbscan_clustering
+
     labels = dbscan_clustering(data, eps=eps, min_samples=min_samples)
     purity = cluster_purity(labels, data._cell_types)
-    
+
     return {'spatial_cluster_purity': purity}
 
 
@@ -302,15 +303,15 @@ def _silhouette_score(
 ) -> Dict[str, float]:
     """Compute silhouette score."""
     from .clustering import dbscan_clustering, silhouette_spatial
-    
+
     labels = dbscan_clustering(data, eps=eps, min_samples=min_samples)
-    
+
     # Check if we have enough clusters
     unique_labels = set(labels)
     unique_labels.discard(-1)
     if len(unique_labels) < 2:
         return {'silhouette_score': np.nan}
-    
+
     score = silhouette_spatial(data, labels, sample_size=sample_size)
     return {'silhouette_score': score}
 
@@ -328,7 +329,7 @@ def _n_connected_components_type(
 ) -> Dict[str, float]:
     """Count connected components for a cell type."""
     from .clustering import connected_components_spatial
-    
+
     try:
         labels = connected_components_spatial(
             data, radius=radius, cell_types=[cell_type]

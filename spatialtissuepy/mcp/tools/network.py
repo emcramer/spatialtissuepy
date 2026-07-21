@@ -112,6 +112,7 @@ class ComponentsResult(BaseModel):
 def _compute_clustering(session_id: str, graph_key: str) -> ClusteringResult:
     """Internal helper to compute clustering coefficients."""
     import networkx as nx
+
     from ..server import get_session_manager
 
     session_mgr = get_session_manager()
@@ -138,7 +139,7 @@ def _compute_clustering(session_id: str, graph_key: str) -> ClusteringResult:
 # --- Tool Registration ---
 
 
-def register_tools(mcp: "FastMCP") -> None:
+def register_tools(mcp: FastMCP) -> None:
     """Register network tools with the MCP server."""
 
     @mcp.tool()
@@ -170,6 +171,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Information about the constructed graph.
         """
         from spatialtissuepy.network import build_proximity_graph
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -238,6 +240,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Information about the constructed graph.
         """
         from spatialtissuepy.network import build_knn_graph
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -300,6 +303,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Information about the constructed graph.
         """
         from spatialtissuepy.network import build_delaunay_graph
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -361,6 +365,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Information about the constructed graph.
         """
         from spatialtissuepy.network import build_gabriel_graph
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -418,6 +423,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Centrality statistics and top nodes.
         """
         import networkx as nx
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -472,6 +478,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Centrality statistics and top nodes.
         """
         import networkx as nx
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -522,6 +529,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Centrality statistics and top nodes.
         """
         import networkx as nx
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -575,6 +583,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Centrality statistics and top nodes.
         """
         import networkx as nx
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -684,6 +693,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Assortativity coefficient and interpretation.
         """
         import networkx as nx
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -746,6 +756,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Degree assortativity coefficient.
         """
         import networkx as nx
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -806,6 +817,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Mixing matrix between cell types.
         """
         import networkx as nx
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()
@@ -857,6 +869,7 @@ def register_tools(mcp: "FastMCP") -> None:
             Component count and sizes.
         """
         import networkx as nx
+
         from ..server import get_session_manager
 
         session_mgr = get_session_manager()

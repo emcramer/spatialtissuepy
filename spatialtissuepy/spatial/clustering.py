@@ -22,15 +22,15 @@ References
 """
 
 from __future__ import annotations
-from typing import Optional, Dict, Tuple, Union, List, TYPE_CHECKING
+
 from enum import Enum
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
+
 import numpy as np
-from scipy.spatial import cKDTree
-from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
+from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import pdist
-from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
+from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans
 from sklearn.preprocessing import StandardScaler
-import warnings
 
 if TYPE_CHECKING:
     from spatialtissuepy.core import SpatialTissueData
@@ -60,7 +60,7 @@ class ClusteringMethod(Enum):
 # -----------------------------------------------------------------------------
 
 def dbscan_clustering(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     eps: float,
     min_samples: int = 5,
     cell_types: Optional[List[str]] = None,
@@ -103,21 +103,21 @@ def dbscan_clustering(
     else:
         coords = data._coordinates
         mask = np.ones(data.n_cells, dtype=bool)
-    
+
     clusterer = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
     cluster_labels = clusterer.fit_predict(coords)
-    
+
     # Map back to full array if subset was used
     if cell_types is not None:
         full_labels = np.full(data.n_cells, -1, dtype=int)
         full_labels[mask] = cluster_labels
         return full_labels
-    
+
     return cluster_labels
 
 
 def dbscan_by_type(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     eps: float,
     min_samples: int = 5,
     metric: str = 'euclidean'
@@ -146,19 +146,19 @@ def dbscan_by_type(
     Useful for finding spatial clusters within each cell population.
     """
     results = {}
-    
+
     for cell_type in data.cell_types_unique:
         idx = data.get_cells_by_type(cell_type)
         coords = data._coordinates[idx]
-        
+
         if len(coords) >= min_samples:
             clusterer = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
             labels = clusterer.fit_predict(coords)
         else:
             labels = np.zeros(len(idx), dtype=int)
-        
+
         results[cell_type] = labels
-    
+
     return results
 
 
@@ -167,7 +167,7 @@ def dbscan_by_type(
 # -----------------------------------------------------------------------------
 
 def hdbscan_clustering(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     min_cluster_size: int = 10,
     min_samples: Optional[int] = None,
     cell_types: Optional[List[str]] = None,
@@ -207,29 +207,29 @@ def hdbscan_clustering(
         raise ImportError(
             "hdbscan package required. Install with: pip install hdbscan"
         )
-    
+
     if min_samples is None:
         min_samples = min_cluster_size
-    
+
     if cell_types is not None:
         mask = np.isin(data._cell_types, cell_types)
         coords = data._coordinates[mask]
     else:
         coords = data._coordinates
         mask = np.ones(data.n_cells, dtype=bool)
-    
+
     clusterer = hdbscan_lib.HDBSCAN(
         min_cluster_size=min_cluster_size,
         min_samples=min_samples,
         cluster_selection_method=cluster_selection_method
     )
     cluster_labels = clusterer.fit_predict(coords)
-    
+
     if cell_types is not None:
         full_labels = np.full(data.n_cells, -1, dtype=int)
         full_labels[mask] = cluster_labels
         return full_labels
-    
+
     return cluster_labels
 
 
@@ -238,7 +238,7 @@ def hdbscan_clustering(
 # -----------------------------------------------------------------------------
 
 def kmeans_spatial(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     n_clusters: int,
     include_coords: bool = True,
     include_composition: bool = False,
@@ -275,22 +275,22 @@ def kmeans_spatial(
     --------
     >>> # Pure spatial clustering
     >>> labels = kmeans_spatial(data, n_clusters=10)
-    >>> 
+    >>>
     >>> # Spatial + neighborhood composition
     >>> labels = kmeans_spatial(
-    ...     data, n_clusters=10, 
-    ...     include_composition=True, 
+    ...     data, n_clusters=10,
+    ...     include_composition=True,
     ...     neighborhood_radius=50
     ... )
     """
     features = []
-    
+
     if include_coords:
         # Scale coordinates
         scaler = StandardScaler()
         coords_scaled = scaler.fit_transform(data._coordinates) * coord_weight
         features.append(coords_scaled)
-    
+
     if include_composition:
         if neighborhood_radius is None:
             raise ValueError(
@@ -301,18 +301,18 @@ def kmeans_spatial(
             data, method='radius', radius=neighborhood_radius
         )
         features.append(composition)
-    
+
     if not features:
         raise ValueError("At least one feature type must be enabled")
-    
+
     X = np.hstack(features)
-    
+
     kmeans = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
     return kmeans.fit_predict(X)
 
 
 def kmeans_by_type(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     n_clusters: int,
     random_state: Optional[int] = None
 ) -> Dict[str, np.ndarray]:
@@ -334,23 +334,23 @@ def kmeans_by_type(
         Dictionary mapping cell type to cluster labels.
     """
     results = {}
-    
+
     for cell_type in data.cell_types_unique:
         idx = data.get_cells_by_type(cell_type)
         coords = data._coordinates[idx]
-        
+
         if len(coords) >= n_clusters:
             kmeans = KMeans(
-                n_clusters=n_clusters, 
+                n_clusters=n_clusters,
                 random_state=random_state,
                 n_init=10
             )
             labels = kmeans.fit_predict(coords)
         else:
             labels = np.arange(len(idx))  # Each cell is own cluster
-        
+
         results[cell_type] = labels
-    
+
     return results
 
 
@@ -359,7 +359,7 @@ def kmeans_by_type(
 # -----------------------------------------------------------------------------
 
 def hierarchical_clustering(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     n_clusters: Optional[int] = None,
     distance_threshold: Optional[float] = None,
     linkage_method: str = 'ward',
@@ -398,26 +398,26 @@ def hierarchical_clustering(
     """
     if n_clusters is None and distance_threshold is None:
         raise ValueError("Specify either n_clusters or distance_threshold")
-    
+
     if cell_types is not None:
         mask = np.isin(data._cell_types, cell_types)
         coords = data._coordinates[mask]
     else:
         coords = data._coordinates
         mask = np.ones(data.n_cells, dtype=bool)
-    
+
     clusterer = AgglomerativeClustering(
         n_clusters=n_clusters,
         distance_threshold=distance_threshold,
         linkage=linkage_method
     )
     cluster_labels = clusterer.fit_predict(coords)
-    
+
     if cell_types is not None:
         full_labels = np.full(data.n_cells, -1, dtype=int)
         full_labels[mask] = cluster_labels
         return full_labels
-    
+
     return cluster_labels
 
 
@@ -484,7 +484,7 @@ def cut_dendrogram(
 # -----------------------------------------------------------------------------
 
 def leiden_clustering(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'radius',
     radius: Optional[float] = None,
     k: Optional[int] = None,
@@ -520,38 +520,38 @@ def leiden_clustering(
     by guaranteeing well-connected communities.
     """
     try:
-        import leidenalg
         import igraph as ig
+        import leidenalg
     except ImportError:
         raise ImportError(
             "leidenalg and igraph required. Install with: "
             "pip install leidenalg python-igraph"
         )
-    
+
     # Build graph using network module
     from spatialtissuepy.network import CellGraph
-    
+
     graph = CellGraph.from_spatial_data(
         data, method=method, radius=radius, k=k
     )
-    
+
     # Convert to igraph
     edges = list(graph.graph.edges())
     g = ig.Graph(n=data.n_cells, edges=edges, directed=False)
-    
+
     # Run Leiden
     partition = leidenalg.find_partition(
-        g, 
+        g,
         leidenalg.RBConfigurationVertexPartition,
         resolution_parameter=resolution,
         seed=random_state
     )
-    
+
     return np.array(partition.membership)
 
 
 def louvain_clustering(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     method: str = 'radius',
     radius: Optional[float] = None,
     k: Optional[int] = None,
@@ -585,28 +585,27 @@ def louvain_clustering(
     -----
     Uses NetworkX's built-in Louvain implementation.
     """
-    import networkx as nx
     from networkx.algorithms.community import louvain_communities
-    
+
     from spatialtissuepy.network import CellGraph
-    
+
     graph = CellGraph.from_spatial_data(
         data, method=method, radius=radius, k=k
     )
-    
+
     # Run Louvain
     communities = louvain_communities(
-        graph.graph, 
+        graph.graph,
         resolution=resolution,
         seed=random_state
     )
-    
+
     # Convert to label array
     labels = np.zeros(data.n_cells, dtype=int)
     for i, community in enumerate(communities):
         for node in community:
             labels[node] = i
-    
+
     return labels
 
 
@@ -615,7 +614,7 @@ def louvain_clustering(
 # -----------------------------------------------------------------------------
 
 def cluster_statistics(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     labels: np.ndarray
 ) -> Dict[str, Union[int, float, Dict]]:
     """
@@ -644,18 +643,18 @@ def cluster_statistics(
     """
     unique_labels = np.unique(labels)
     n_clusters = len(unique_labels) - (1 if -1 in unique_labels else 0)
-    
+
     # Noise statistics
     noise_mask = labels == -1
     n_noise = np.sum(noise_mask)
     noise_fraction = n_noise / len(labels)
-    
+
     # Cluster sizes
     cluster_sizes = {}
     for label in unique_labels:
         if label != -1:
             cluster_sizes[int(label)] = int(np.sum(labels == label))
-    
+
     # Type composition per cluster
     type_composition = {}
     for label in unique_labels:
@@ -665,7 +664,7 @@ def cluster_statistics(
                 data._cell_types[mask], return_counts=True
             )
             type_composition[int(label)] = dict(zip(types, counts.astype(int)))
-    
+
     # Spatial statistics per cluster
     cluster_centroids = {}
     cluster_radii = {}
@@ -677,7 +676,7 @@ def cluster_statistics(
             radius = np.max(np.linalg.norm(coords - centroid, axis=1))
             cluster_centroids[int(label)] = centroid.tolist()
             cluster_radii[int(label)] = float(radius)
-    
+
     return {
         'n_clusters': n_clusters,
         'n_noise': n_noise,
@@ -715,24 +714,24 @@ def cluster_purity(
     Purity = (1/N) * sum(max type count in each cluster)
     """
     unique_labels = np.unique(labels[labels != -1])
-    
+
     if len(unique_labels) == 0:
         return 0.0
-    
+
     total_correct = 0
     total_cells = 0
-    
+
     for label in unique_labels:
         mask = labels == label
         _, counts = np.unique(cell_types[mask], return_counts=True)
         total_correct += np.max(counts)
         total_cells += np.sum(mask)
-    
+
     return total_correct / total_cells
 
 
 def silhouette_spatial(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     labels: np.ndarray,
     sample_size: Optional[int] = None,
     random_state: Optional[int] = None
@@ -757,17 +756,17 @@ def silhouette_spatial(
         Mean silhouette score in [-1, 1]. Higher = better clustering.
     """
     from sklearn.metrics import silhouette_score
-    
+
     # Remove noise points
     valid_mask = labels != -1
     coords = data._coordinates[valid_mask]
     valid_labels = labels[valid_mask]
-    
+
     if len(np.unique(valid_labels)) < 2:
         return 0.0
-    
+
     return silhouette_score(
-        coords, 
+        coords,
         valid_labels,
         sample_size=sample_size,
         random_state=random_state
@@ -779,7 +778,7 @@ def silhouette_spatial(
 # -----------------------------------------------------------------------------
 
 def spatial_regions(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     n_regions: int,
     method: str = 'kmeans',
     **kwargs
@@ -818,33 +817,33 @@ def spatial_regions(
 
 
 def _grid_regions(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     n_regions: int
 ) -> np.ndarray:
     """Create grid-based regions."""
     bounds = data.bounds
-    
+
     # Determine grid dimensions (roughly square)
     n_x = int(np.ceil(np.sqrt(n_regions)))
     n_y = int(np.ceil(n_regions / n_x))
-    
+
     x_edges = np.linspace(bounds['x'][0], bounds['x'][1], n_x + 1)
     y_edges = np.linspace(bounds['y'][0], bounds['y'][1], n_y + 1)
-    
+
     labels = np.zeros(data.n_cells, dtype=int)
-    
+
     for i, (x, y) in enumerate(data._coordinates[:, :2]):
         x_bin = np.searchsorted(x_edges[1:], x, side='right')
         y_bin = np.searchsorted(y_edges[1:], y, side='right')
         x_bin = min(x_bin, n_x - 1)
         y_bin = min(y_bin, n_y - 1)
         labels[i] = y_bin * n_x + x_bin
-    
+
     return labels
 
 
 def connected_components_spatial(
-    data: 'SpatialTissueData',
+    data: SpatialTissueData,
     radius: float,
     cell_types: Optional[List[str]] = None
 ) -> np.ndarray:
@@ -865,30 +864,31 @@ def connected_components_spatial(
     np.ndarray
         Component labels.
     """
-    from spatialtissuepy.network import CellGraph
     import networkx as nx
-    
+
+    from spatialtissuepy.network import CellGraph
+
     if cell_types is not None:
         subset = data.subset(cell_types=cell_types)
         graph = CellGraph.from_spatial_data(subset, method='radius', radius=radius)
         components = list(nx.connected_components(graph.graph))
-        
+
         # Map back to original indices
         mask = np.isin(data._cell_types, cell_types)
         idx_map = np.where(mask)[0]
-        
+
         labels = np.full(data.n_cells, -1, dtype=int)
         for i, component in enumerate(components):
             for node in component:
                 labels[idx_map[node]] = i
         return labels
-    
+
     graph = CellGraph.from_spatial_data(data, method='proximity', radius=radius)
     components = list(nx.connected_components(graph.to_networkx()))
-    
+
     labels = np.zeros(data.n_cells, dtype=int)
     for i, component in enumerate(components):
         for node in component:
             labels[node] = i
-    
+
     return labels

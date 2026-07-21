@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from fastmcp import FastMCP
 
-from .session import SessionManager
 from .serialization import MCPSerializer
+from .session import SessionManager
 
 if TYPE_CHECKING:
     pass

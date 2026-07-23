@@ -8,11 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 Substrate / microenvironment access for PhysiCell simulations — the main
-functional gap called out in the v0.2.0 defect report. Additive; nothing
-existing changes behavior.
+functional gap called out in the v0.2.0 defect report — plus a new
+`microenvironment` analysis module. Additive; nothing existing changes
+behavior.
 
 ### Added
 
+- **`microenvironment` analysis module.** The previously-empty stub is now
+  implemented with three composed, domain-framed analyses:
+  - `identify_niches(data, n_niches, radius=...)` — spatial niches (recurring
+    local cell-type compositions) by k-means over neighborhood composition
+    vectors, returning a `NicheResult` with per-cell labels and per-niche
+    composition profiles. Complementary to the topic-model view in
+    `spatialtissuepy.lda`.
+  - `detect_boundaries(data, radius, labels=None)` — cells at the interface
+    between groups, scored by neighborhood "foreignness". Generalizes the
+    pairwise `spatial.interface_cells` to any grouping; pass niche labels to
+    find niche interfaces. Returns a `BoundaryResult`.
+  - `spatial_gradient` / `substrate_gradient` / `density_gradient` — spatial
+    gradients of a scalar field (substrate concentration or local cell density)
+    by local linear regression, returning a `GradientField` with `magnitude`
+    and `direction`. Validated against a finite-difference reference on the
+    regular voxel grid (correlation > 0.97 on interior points).
 - **Environmental substrate sampling on `PhysiCellTimeStep`.** The
   microenvironment `.mat` (oxygen and other diffusible fields) is now reachable
   through the high-level API, having previously been parseable only by calling

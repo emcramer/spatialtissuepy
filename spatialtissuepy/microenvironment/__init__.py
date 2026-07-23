@@ -1,15 +1,37 @@
 """
-Tumor microenvironment analysis module.
+Tumor microenvironment analysis.
 
-.. note::
+Higher-level, domain-framed analyses of tissue microenvironment structure,
+composed from the spatial, statistics, and PhysiCell-substrate machinery:
 
-    This module is a planned feature for the v0.3.0 release and is not yet
-    implemented. It will provide niche identification, boundary detection, and
-    spatial gradient analysis. In the meantime, much of this functionality can
-    be assembled from the :mod:`spatialtissuepy.spatial` and
-    :mod:`spatialtissuepy.statistics` modules (e.g. neighborhood composition,
-    Getis-Ord Gi* hotspots, and boundary cell detection).
+- **Niche identification** (:func:`identify_niches`): recurring local cell-type
+  compositions, found by clustering neighborhood composition vectors.
+- **Boundary detection** (:func:`detect_boundaries`): cells at the interface
+  between cell types or niches.
+- **Gradient analysis** (:func:`spatial_gradient`, :func:`substrate_gradient`,
+  :func:`density_gradient`): spatial gradients of substrate concentration or
+  cell density.
 """
 
-# Planned for v0.3.0 — see module docstring.
-__all__ = []
+from .boundaries import BoundaryResult, detect_boundaries
+from .gradients import (
+    GradientField,
+    density_gradient,
+    spatial_gradient,
+    substrate_gradient,
+)
+from .niches import NicheResult, identify_niches
+
+__all__ = [
+    # Niches
+    'identify_niches',
+    'NicheResult',
+    # Boundaries
+    'detect_boundaries',
+    'BoundaryResult',
+    # Gradients
+    'spatial_gradient',
+    'substrate_gradient',
+    'density_gradient',
+    'GradientField',
+]

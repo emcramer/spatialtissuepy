@@ -134,6 +134,17 @@ def parse_physicell_xml(xml_path: Path) -> PhysiCellMetadata:
             name = var.get('name', 'unknown')
             substrate_names.append(name)
 
+    # Extract the microenvironment field-data filename. PhysiCell records it at
+    # microenvironment/domain/data/filename; this is distinct from the mesh file
+    # under mesh/voxels/filename. Reading it lets the reader locate the
+    # substrate .mat even when it does not follow the default naming convention.
+    microenvironment_file = None
+    me_elem = root.find('.//microenvironment')
+    if me_elem is not None:
+        data_fn = me_elem.find('.//data/filename')
+        if data_fn is not None and data_fn.text:
+            microenvironment_file = data_fn.text.strip()
+
     # Extract cell type names and IDs
     cell_type_names = []
     cell_type_ids = []
@@ -170,6 +181,7 @@ def parse_physicell_xml(xml_path: Path) -> PhysiCellMetadata:
     extra = {
         'custom_labels': custom_labels,
         'xml_path': str(xml_path),
+        'microenvironment_file': microenvironment_file,
     }
 
     return PhysiCellMetadata(

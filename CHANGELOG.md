@@ -5,6 +5,49 @@ All notable changes to spatialtissuepy are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Substrate / microenvironment access for PhysiCell simulations — the main
+functional gap called out in the v0.2.0 defect report. Additive; nothing
+existing changes behavior.
+
+### Added
+
+- **Environmental substrate sampling on `PhysiCellTimeStep`.** The
+  microenvironment `.mat` (oxygen and other diffusible fields) is now reachable
+  through the high-level API, having previously been parseable only by calling
+  `parse_microenvironment_mat` directly:
+  - `substrates` → `{name: (n_voxels,) array}` of concentration fields
+  - `voxel_positions` → `(n_voxels, 3)` voxel-center coordinates
+  - `substrate_at(name, x, y, z=None)` → concentration in the voxel nearest each
+    query point, via a cached `scipy.spatial.cKDTree`. Verified to match a
+    brute-force `argmin` nearest-voxel lookup exactly on every cell of the
+    bundled example frame.
+  - `substrate_names` on both `PhysiCellTimeStep` and `PhysiCellSimulation`.
+- **Per-cell internalized substrates.** `PhysiCellTimeStep.internalized_substrates()`
+  returns a DataFrame of PhysiCell's `internalized_total_substrates` field, one
+  column per substrate (named), one row per cell, in `positions` order. This is
+  the amount each cell has actually taken up — accounting for PhysiCell's uptake
+  dynamics — as opposed to the environmental concentration at the cell's
+  location that `substrate_at` gives. (Populated only when the simulation
+  enabled `track_internalized_substrates_in_each_agent`; otherwise present but
+  zero, which the method documents.)
+- `parse_physicell_xml` now records the microenvironment field-data filename at
+  `metadata.extra['microenvironment_file']`, read from the XML's
+  `microenvironment/domain/data/filename` element so relocated or renamed
+  outputs still resolve. The reader falls back to the default
+  `output{index:08d}_microenvironment0.mat` naming.
+- Regression tests (`tests/test_physicell_microenvironment.py`, 22 tests)
+  covering nearest-voxel equivalence, tie handling, 2-D/3-D and scalar/array
+  queries, the internalized-vs-raw-matrix mapping, empty-microenvironment
+  frames, file resolution, and `discover_physicell_timesteps` arity.
+
+### Notes
+
+- `discover_physicell_timesteps` keeps its 3-tuple return type unchanged; the
+  microenvironment file is resolved lazily inside `PhysiCellTimeStep`, so no
+  caller that unpacks the tuple is affected.
+
 ## [0.3.0] - 2026-07-23
 
 PhysiCell reader correctness fixes, reported against v0.2.0 by the

@@ -11,7 +11,7 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -24,8 +24,53 @@ from .parser import (
     PhysiCellMetadata,
     get_cell_type_mapping,
     parse_cells_mat,
+    parse_microenvironment_mat,
     parse_physicell_xml,
 )
+
+
+def _find_microenvironment_mat(
+    xml_path: Path,
+    microenvironment_file: Optional[str] = None,
+) -> Optional[Path]:
+    """
+    Locate the microenvironment ``.mat`` file for a frame.
+
+    Resolution order:
+
+    1. The filename declared in the frame's XML (``microenvironment/domain/
+       data/filename``), if given -- this survives renamed or relocated output.
+    2. The default naming convention ``output{index:08d}_microenvironment0.mat``
+       next to the XML.
+
+    Parameters
+    ----------
+    xml_path : Path
+        Path to the frame's ``output*.xml``.
+    microenvironment_file : str, optional
+        Filename from the XML, as parsed into
+        ``metadata.extra['microenvironment_file']``.
+
+    Returns
+    -------
+    Path or None
+        Path to the microenvironment ``.mat`` if found, else ``None``.
+    """
+    xml_path = Path(xml_path)
+
+    if microenvironment_file:
+        candidate = xml_path.parent / microenvironment_file
+        if candidate.exists():
+            return candidate
+
+    match = re.search(r'output(\d+)', xml_path.stem)
+    if match:
+        index = int(match.group(1))
+        candidate = xml_path.parent / f'output{index:08d}_microenvironment0.mat'
+        if candidate.exists():
+            return candidate
+
+    return None
 
 # -----------------------------------------------------------------------------
 # PhysiCell TimeStep
@@ -69,8 +114,13 @@ class PhysiCellTimeStep(ABMTimeStep):
     cells_mat_path: Path = None
     cell_type_mapping: Dict[int, str] = field(default_factory=dict)
     include_dead_cells: bool = False
+    microenvironment_mat_path: Optional[Path] = None
     _cell_data: Optional[Dict[str, np.ndarray]] = field(default=None, repr=False)
     _physicell_metadata: Optional[PhysiCellMetadata] = field(default=None, repr=False)
+    _microenvironment: Optional[Dict[str, Any]] = field(default=None, repr=False)
+    _me_loaded: bool = field(default=False, repr=False)
+    _voxel_tree: Any = field(default=None, repr=False)
+    _voxel_tree_ndim: Optional[int] = field(default=None, repr=False)
 
     def _load_cell_data(self) -> Dict[str, np.ndarray]:
         """Load cell data from MAT file (cached)."""
@@ -98,6 +148,200 @@ class PhysiCellTimeStep(ABMTimeStep):
         if self._physicell_metadata is None:
             self._physicell_metadata = parse_physicell_xml(self.source_path)
         return self._physicell_metadata
+
+    def _load_microenvironment(self) -> Dict[str, Any]:
+        """
+        Load the substrate field data for this frame (cached).
+
+        Resolves the microenvironment ``.mat`` from the XML (or the default
+        naming convention) if a path was not supplied. A frame with no
+        microenvironment file yields empty substrates rather than raising, so
+        callers can probe ``substrates`` unconditionally.
+        """
+        if self._me_loaded:
+            return self._microenvironment
+
+        empty = {
+            'voxel_positions': np.empty((0, 3)),
+            'concentrations': {},
+            'raw_data': None,
+        }
+
+        path = self.microenvironment_mat_path
+        if path is None:
+            try:
+                me_file = self._load_metadata().extra.get('microenvironment_file')
+            except (OSError, ET.ParseError):
+                me_file = None
+            path = _find_microenvironment_mat(self.source_path, me_file)
+            self.microenvironment_mat_path = path
+
+        if path is None:
+            self._microenvironment = empty
+        else:
+            try:
+                substrate_names = self._load_metadata().substrate_names
+            except (OSError, ET.ParseError):
+                substrate_names = None
+            self._microenvironment = parse_microenvironment_mat(
+                path, substrate_names
+            )
+
+        self._me_loaded = True
+        return self._microenvironment
+
+    @property
+    def substrate_names(self) -> List[str]:
+        """Names of the diffusible substrates, in matrix order."""
+        return list(self._load_metadata().substrate_names)
+
+    @property
+    def substrates(self) -> Dict[str, np.ndarray]:
+        """
+        Substrate concentration fields, keyed by name.
+
+        Each value is a ``(n_voxels,)`` array aligned with
+        :attr:`voxel_positions`. Empty if the frame has no microenvironment
+        file.
+        """
+        return self._load_microenvironment()['concentrations']
+
+    @property
+    def voxel_positions(self) -> np.ndarray:
+        """``(n_voxels, 3)`` array of voxel-center coordinates."""
+        return self._load_microenvironment()['voxel_positions']
+
+    def substrate_at(
+        self,
+        name: str,
+        x: Union[float, np.ndarray],
+        y: Union[float, np.ndarray],
+        z: Optional[Union[float, np.ndarray]] = None,
+    ) -> np.ndarray:
+        """
+        Sample a substrate's environmental concentration at spatial points.
+
+        Returns the concentration in the voxel nearest each query point, found
+        with a KD-tree over the voxel centers. This is the concentration of the
+        substrate *in the space around* a location; for the amount a cell has
+        actually taken up, use :meth:`internalized_substrates`.
+
+        Parameters
+        ----------
+        name : str
+            Substrate name; must be one of :attr:`substrate_names`.
+        x, y : float or array-like
+            Query coordinates. Scalars or equal-length arrays.
+        z : float or array-like, optional
+            Query z. If given, nearest-voxel search is 3-D; otherwise it uses
+            the x-y plane (appropriate for 2-D simulations).
+
+        Returns
+        -------
+        np.ndarray
+            Concentration at each query point, matching the input shape.
+        """
+        me = self._load_microenvironment()
+        concentrations = me['concentrations']
+        if name not in concentrations:
+            available = ', '.join(concentrations) or '(none)'
+            raise ValueError(
+                f"Unknown substrate {name!r}. Available: {available}"
+            )
+
+        voxels = me['voxel_positions']
+        if voxels.shape[0] == 0:
+            raise ValueError(
+                f"No microenvironment voxels available for {self.source_path}"
+            )
+
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        if z is None:
+            query = np.column_stack([np.ravel(x), np.ravel(y)])
+            ndim = 2
+        else:
+            z = np.asarray(z, dtype=float)
+            query = np.column_stack([np.ravel(x), np.ravel(y), np.ravel(z)])
+            ndim = 3
+
+        tree = self._voxel_kdtree(ndim)
+        _, idx = tree.query(query)
+        result = concentrations[name][idx]
+
+        return result if x.ndim else result[0]
+
+    def _voxel_kdtree(self, ndim: int):
+        """Build (and cache) a KD-tree over voxel centers for `ndim` axes."""
+        if self._voxel_tree is None or self._voxel_tree_ndim != ndim:
+            from scipy.spatial import cKDTree
+
+            voxels = self._load_microenvironment()['voxel_positions']
+            self._voxel_tree = cKDTree(voxels[:, :ndim])
+            self._voxel_tree_ndim = ndim
+        return self._voxel_tree
+
+    def internalized_substrates(
+        self,
+        include_dead_cells: Optional[bool] = None,
+    ) -> pd.DataFrame:
+        """
+        Per-cell internalized substrate amounts, one column per substrate.
+
+        These come from PhysiCell's ``internalized_total_substrates`` field on
+        each cell, so they reflect the framework's actual uptake dynamics rather
+        than the environmental concentration at the cell's location. Use this
+        instead of :meth:`substrate_at` when you need what a cell has taken up,
+        not what surrounds it.
+
+        Rows are in the same order as :attr:`positions`.
+
+        .. note::
+           PhysiCell only accumulates this field when the simulation enables
+           ``track_internalized_substrates_in_each_agent``. If that option was
+           off, the column is present but uniformly zero -- that is the model's
+           recorded value, not a parsing artifact. For the environmental
+           concentration, which is always available, use :meth:`substrate_at`.
+
+        Parameters
+        ----------
+        include_dead_cells : bool, optional
+            Whether to include dead cells. Defaults to the instance attribute.
+
+        Returns
+        -------
+        pd.DataFrame
+            Columns named by substrate; one row per cell.
+
+        Raises
+        ------
+        ValueError
+            If the frame's cell data does not record internalized substrates
+            (the model did not write the ``internalized_total_substrates``
+            field, or the XML labels were unavailable).
+        """
+        data = self._load_cell_data()
+        columns = data.get('columns') or {}
+        names = self.substrate_names
+
+        field_keys = [f'internalized_total_substrates_{i}' for i in range(len(names))]
+        if not names or not all(k in columns for k in field_keys):
+            raise ValueError(
+                "This frame does not record internalized substrates. It "
+                "requires the PhysiCell 'internalized_total_substrates' field "
+                "and readable XML <labels>; neither is optional here."
+            )
+
+        if include_dead_cells is None:
+            include_dead_cells = self.include_dead_cells
+        if include_dead_cells:
+            mask = np.ones(len(data['cell_types']), dtype=bool)
+        else:
+            mask = data['dead_flags'] == 0
+
+        return pd.DataFrame(
+            {name: columns[key][mask] for name, key in zip(names, field_keys)}
+        )
 
     @property
     def n_cells(self) -> int:
@@ -389,6 +633,18 @@ class PhysiCellSimulation(ABMSimulation):
     def n_timesteps(self) -> int:
         """Number of time steps."""
         return len(self._timestep_files)
+
+    @property
+    def substrate_names(self) -> List[str]:
+        """
+        Names of the diffusible substrates in this simulation.
+
+        Read from the first frame's XML; empty if there are no time steps.
+        """
+        if not self._timestep_files:
+            return []
+        first_xml = self._timestep_files[0][1]
+        return list(parse_physicell_xml(first_xml).substrate_names)
 
     @property
     def times(self) -> np.ndarray:

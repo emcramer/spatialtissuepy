@@ -5,11 +5,13 @@ All notable changes to spatialtissuepy are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.1] - 2026-07-23
 
 PhysiCell reader correctness fixes, reported against v0.2.0 by the
 llm-abm-consistency harness (OHSU ChangLab) and reproduced against both their
-PhysiCell 1.14.2 output and this repository's bundled example simulation.
+PhysiCell 1.14.2 output and this repository's bundled example simulation. This
+release also repairs the CI lint gate, which had never passed, and raises the
+Python floor to match what the dependencies actually require.
 
 ### Fixed
 
@@ -70,6 +72,28 @@ PhysiCell 1.14.2 output and this repository's bundled example simulation.
 - `PhysiCellTimeStep._load_cell_data()` and `to_trajectory_dataframe()` now
   resolve columns from each frame's own XML, so models with differing variable
   counts parse correctly in the same session.
+- **Raised the minimum Python version to 3.10** (from a nominal 3.8).
+  `requires-python` claimed `>=3.8`, but the `mcp` extra depends on `fastmcp`,
+  which requires 3.10+, so `pip install spatialtissuepy[all]` could never
+  succeed on 3.8 or 3.9. The two had drifted since the MCP server was added and
+  nothing surfaced it, because the CI lint gate failed before any install ran.
+  Python 3.8 reached end of life in October 2024 and 3.9 in October 2025, and
+  current releases of the core scientific stack already require 3.11+. The CI
+  matrix now runs 3.10-3.13.
+
+### Build
+
+- **The `ruff` lint job passes for the first time.** It reported ~6,100 errors
+  on every branch, and because the test job declares `needs: lint`, no pull
+  request had been able to run the test suite. The linter was also flagging
+  real defects behind the noise: `Union` used in annotations but never imported
+  across seven modules (latent under `from __future__ import annotations`, but
+  raised `NameError` under `typing.get_type_hints`), a matplotlib symbol
+  referenced in module-level annotations while imported only lazily, and three
+  broken forward references. The bulk of the remaining diff was trailing
+  whitespace, import ordering, and unused locals.
+- Moved the deprecated top-level `ruff` config under `[tool.ruff.lint]` and
+  aligned the `black`, `ruff`, and `mypy` target versions with the new floor.
 
 ### Known gaps
 
@@ -118,4 +142,5 @@ numerical-stability improvements across the analysis modules.
 - Spatial and statistics bug fixes and numerical-stability improvements.
 - Runtime bugs in the MCP synthetic and viz tools.
 
+[0.2.1]: https://github.com/emcramer/spatialtissuepy/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/emcramer/spatialtissuepy/releases/tag/v0.2.0

@@ -5,7 +5,7 @@ All notable changes to spatialtissuepy are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.1] - 2026-07-23
+## [0.3.0] - 2026-07-23
 
 PhysiCell reader correctness fixes, reported against v0.2.0 by the
 llm-abm-consistency harness (OHSU ChangLab) and reproduced against both their
@@ -94,12 +94,17 @@ Python floor to match what the dependencies actually require.
   whitespace, import ordering, and unused locals.
 - Moved the deprecated top-level `ruff` config under `[tool.ruff.lint]` and
   aligned the `black`, `ruff`, and `mypy` target versions with the new floor.
+- **Decoupled the `lint` and `test` CI jobs.** The test job no longer declares
+  `needs: lint`, so the two run as independent siblings. Previously a lint
+  failure skipped the entire test matrix, meaning a style regression could
+  silently suppress all test signal — which is how the `fastmcp` install
+  incompatibility went undetected.
 
 ### Known gaps
 
 - `parse_microenvironment_mat` is implemented and exported but still not wired
   into `PhysiCellTimeStep` / `PhysiCellSimulation`; substrate fields remain
-  reachable only through the parser. Planned for v0.3.0.
+  reachable only through the parser. Planned for a future release.
 
 ## [0.2.0] - 2026-06-26
 
@@ -142,5 +147,5 @@ numerical-stability improvements across the analysis modules.
 - Spatial and statistics bug fixes and numerical-stability improvements.
 - Runtime bugs in the MCP synthetic and viz tools.
 
-[0.2.1]: https://github.com/emcramer/spatialtissuepy/compare/v0.2.0...v0.2.1
+[0.3.0]: https://github.com/emcramer/spatialtissuepy/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/emcramer/spatialtissuepy/releases/tag/v0.2.0

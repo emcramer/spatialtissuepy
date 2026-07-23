@@ -1,5 +1,5 @@
 """
-Regression tests for PhysiCell reader defects fixed in v0.2.1.
+Regression tests for PhysiCell reader defects fixed in v0.3.0.
 
 These cover the label-driven column extraction and orientation handling
 reported by the llm-abm-consistency harness (OHSU ChangLab, 2026-07-21).

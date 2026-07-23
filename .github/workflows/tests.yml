@@ -22,7 +22,8 @@ jobs:
         run: ruff check .
 
   test:
-    needs: lint
+    # Runs independently of lint: a style regression must not suppress the test
+    # signal. Merge-gating for both jobs is enforced by branch protection.
     runs-on: ubuntu-latest
     strategy:
       matrix:

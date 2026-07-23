@@ -20,7 +20,10 @@ Session Structure
 from __future__ import annotations
 
 import json
+import os
 import pickle
+import threading
+import uuid
 import shutil
 import uuid
 from dataclasses import dataclass, field
@@ -190,8 +193,7 @@ class SessionManager:
             Data to store.
         """
         path = self.base_dir / session_id / "data" / f"{key}.pkl"
-        with open(path, "wb") as f:
-            pickle.dump(data, f)
+        self._atomic_pickle_dump(data, path)
 
         meta = self._load_metadata(session_id)
         if meta and key not in meta.data_keys:
@@ -395,8 +397,7 @@ class SessionManager:
     ) -> None:
         """Store a StatisticsPanel object."""
         path = self.base_dir / session_id / "panels" / f"{key}.pkl"
-        with open(path, "wb") as f:
-            pickle.dump(panel, f)
+        self._atomic_pickle_dump(panel, path)
 
         meta = self._load_metadata(session_id)
         if meta and key not in meta.panel_keys:
@@ -508,6 +509,43 @@ class SessionManager:
         if meta:
             meta.last_accessed = datetime.now().isoformat()
             self._save_metadata(session_id, meta)
+
+    @staticmethod
+    def _atomic_pickle_dump(obj: Any, path: Path) -> None:
+        """Pickle ``obj`` to ``path`` atomically.
+
+        Writes to a sibling temp file first and then uses ``os.replace`` to
+        atomically swap it into place. This prevents truncated / partial
+        pickle files when two tool calls update the same data or panel
+        concurrently -- the symptom was ``pickle.UnpicklingError: Ran out
+        of input`` on a subsequent read, because one writer had truncated
+        the file after another had started writing.
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Unique per-call temp name: pid + thread id + uuid. Needed because
+        # two threads in the same process share the same pid, so a
+        # pid-only suffix would collide under in-process concurrency.
+        tmp_suffix = (
+            f".tmp.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex[:8]}"
+        )
+        tmp_path = path.with_suffix(path.suffix + tmp_suffix)
+        try:
+            with open(tmp_path, "wb") as f:
+                pickle.dump(obj, f)
+                f.flush()
+                try:
+                    os.fsync(f.fileno())
+                except OSError:
+                    # fsync is best-effort -- some filesystems reject it
+                    pass
+            os.replace(tmp_path, path)
+        except Exception:
+            # Clean up the temp file so we don't leak partial writes
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+            raise
 
     def get_session_info(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information about a session."""

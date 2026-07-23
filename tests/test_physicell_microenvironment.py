@@ -60,6 +60,44 @@ def _injected_timestep(voxels, concentrations):
     return ts
 
 
+def _build_substrate_frame(dir_path, n_subs, start=6, n_cells=8):
+    """
+    Write a minimal PhysiCell-like frame with `n_subs` substrates and an
+    internalized_total_substrates field of size n_subs. Value in substrate i,
+    cell j is (i+1)*100 + j, so the mapping can be checked exactly.
+
+    Returns the substrate names.
+    """
+    subs = [f'sub{i}' for i in range(n_subs)]
+    n_rows = start + n_subs  # declared variable count == matrix rows
+    matrix = np.zeros((n_rows, n_cells))
+    matrix[0] = np.arange(n_cells)
+    matrix[1] = np.linspace(0, 70, n_cells)
+    matrix[2] = np.linspace(0, 70, n_cells)
+    for i in range(n_subs):
+        matrix[start + i] = (i + 1) * 100 + np.arange(n_cells)
+    savemat(str(dir_path / 'output00000000_cells.mat'), {'cells': matrix})
+
+    var_xml = ''.join(
+        f'<variable name="{s}" ID="{i}"/>' for i, s in enumerate(subs)
+    )
+    labels = [
+        ('ID', 0, 1), ('position', 1, 3), ('cell_type', 5, 1),
+        ('internalized_total_substrates', start, n_subs),
+    ]
+    label_xml = ''.join(
+        f'<label index="{idx}" size="{sz}">{nm}</label>' for nm, idx, sz in labels
+    )
+    (dir_path / 'output00000000.xml').write_text(
+        '<MultiCellDS><microenvironment><domain><variables>'
+        f'{var_xml}</variables></domain></microenvironment>'
+        '<cellular_information><simplified_data><labels>'
+        f'{label_xml}</labels></simplified_data></cellular_information>'
+        '</MultiCellDS>'
+    )
+    return subs
+
+
 class TestSubstrateFields:
     def test_substrate_names(self, frame_xml):
         ts = read_physicell_timestep(frame_xml)
@@ -131,6 +169,24 @@ class TestSubstrateAt:
         assert ts.substrate_at('o2', 0.0, 0.0, 1.0) == 5.0
         assert ts.substrate_at('o2', 0.0, 0.0, 9.0) == 9.0
 
+    def test_output_shape_mirrors_input(self):
+        # 4 voxels on a line; query with a 2-D grid of points.
+        voxels = [[0, 0, 0], [10, 0, 0], [20, 0, 0], [30, 0, 0]]
+        ts = _injected_timestep(voxels, {'o2': [1.0, 2.0, 3.0, 4.0]})
+
+        grid = ts.substrate_at('o2', np.array([[0.0, 10.0], [20.0, 30.0]]),
+                               np.array([[0.0, 0.0], [0.0, 0.0]]))
+        assert grid.shape == (2, 2)
+        np.testing.assert_array_equal(grid, [[1.0, 2.0], [3.0, 4.0]])
+
+    def test_broadcasts_scalar_and_array(self):
+        voxels = [[0, 0, 0], [0, 10, 0]]
+        ts = _injected_timestep(voxels, {'o2': [1.0, 2.0]})
+        # scalar x, array y -> broadcast to array
+        out = ts.substrate_at('o2', 0.0, np.array([0.0, 10.0]))
+        assert out.shape == (2,)
+        np.testing.assert_array_equal(out, [1.0, 2.0])
+
 
 class TestInternalizedSubstrates:
     def test_columns_match_raw_matrix(self, frame_xml, example_physicell_dir):
@@ -172,6 +228,23 @@ class TestInternalizedSubstrates:
         ts = read_physicell_timestep(tmp_path / 'output00000000.xml')
         with pytest.raises(ValueError, match="internalized"):
             ts.internalized_substrates()
+
+    @pytest.mark.parametrize('n_subs', [1, 3, 5])
+    def test_maps_field_for_any_substrate_count(self, tmp_path, n_subs):
+        """The field's columns are named by the label's own size convention:
+        bare name for size 1, _x/_y/_z for size 3, _0.._n otherwise. Hardcoding
+        one convention breaks the single- and triple-substrate cases (the two
+        most common PhysiCell setups)."""
+        subs = _build_substrate_frame(tmp_path, n_subs)
+        ts = read_physicell_timestep(
+            tmp_path / 'output00000000.xml', include_dead_cells=True
+        )
+        inte = ts.internalized_substrates(include_dead_cells=True)
+
+        assert list(inte.columns) == subs
+        for i, name in enumerate(subs):
+            expected = (i + 1) * 100 + np.arange(len(inte))
+            np.testing.assert_array_equal(inte[name].to_numpy(), expected)
 
 
 class TestFileResolution:

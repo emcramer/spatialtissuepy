@@ -189,6 +189,21 @@ class TestSpatialGradient:
         with pytest.raises(ValueError):
             spatial_gradient(np.zeros((5, 2)), np.zeros(4))
 
+    def test_too_few_points_is_nan_not_wrong(self):
+        """2 points in 2-D can't determine a 2-D gradient -> NaN, not (g, 0)."""
+        pos = np.array([[0.0, 0.0], [1.0, 0.0]])
+        values = np.array([0.0, 3.0])  # true gradient underdetermined in y
+        gf = spatial_gradient(pos, values, k=2)
+        assert np.isnan(gf.gradients).all()
+
+    def test_collinear_neighbors_are_nan(self):
+        """Collinear points give a rank-deficient fit -> NaN, not a silent
+        wrong minimum-norm gradient."""
+        pos = np.column_stack([np.arange(5.0), np.zeros(5)])  # all on y=0
+        values = 3.0 * pos[:, 0]
+        gf = spatial_gradient(pos, values, k=5)
+        assert np.isnan(gf.gradients).all()
+
 
 class TestSubstrateGradient:
     def test_planar_field_gives_2d_gradient(self, example_timestep):

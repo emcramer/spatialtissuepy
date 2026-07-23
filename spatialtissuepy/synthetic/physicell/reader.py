@@ -231,15 +231,17 @@ class PhysiCellTimeStep(ABMTimeStep):
         name : str
             Substrate name; must be one of :attr:`substrate_names`.
         x, y : float or array-like
-            Query coordinates. Scalars or equal-length arrays.
+            Query coordinates. Scalars, arrays, or any broadcastable
+            combination (e.g. scalar ``x`` with an array ``y``).
         z : float or array-like, optional
             Query z. If given, nearest-voxel search is 3-D; otherwise it uses
             the x-y plane (appropriate for 2-D simulations).
 
         Returns
         -------
-        np.ndarray
-            Concentration at each query point, matching the input shape.
+        float or np.ndarray
+            Concentration at each query point. A scalar in yields a scalar out;
+            otherwise the result has the broadcast shape of the inputs.
         """
         me = self._load_microenvironment()
         concentrations = me['concentrations']
@@ -258,18 +260,26 @@ class PhysiCellTimeStep(ABMTimeStep):
         x = np.asarray(x, dtype=float)
         y = np.asarray(y, dtype=float)
         if z is None:
-            query = np.column_stack([np.ravel(x), np.ravel(y)])
+            x, y = np.broadcast_arrays(x, y)
+            out_shape = x.shape
+            query = np.column_stack([x.ravel(), y.ravel()])
             ndim = 2
         else:
             z = np.asarray(z, dtype=float)
-            query = np.column_stack([np.ravel(x), np.ravel(y), np.ravel(z)])
+            x, y, z = np.broadcast_arrays(x, y, z)
+            out_shape = x.shape
+            query = np.column_stack([x.ravel(), y.ravel(), z.ravel()])
             ndim = 3
 
         tree = self._voxel_kdtree(ndim)
         _, idx = tree.query(query)
         result = concentrations[name][idx]
 
-        return result if x.ndim else result[0]
+        # Return shape mirrors the query: scalar in -> scalar out, and an
+        # (m,) or (h, w) grid of points in -> the same shape out.
+        if out_shape == ():
+            return result[0]
+        return result.reshape(out_shape)
 
     def _voxel_kdtree(self, ndim: int):
         """Build (and cache) a KD-tree over voxel centers for `ndim` axes."""
@@ -320,16 +330,41 @@ class PhysiCellTimeStep(ABMTimeStep):
             (the model did not write the ``internalized_total_substrates``
             field, or the XML labels were unavailable).
         """
+        from .parser import expand_cell_labels
+
         data = self._load_cell_data()
         columns = data.get('columns') or {}
         names = self.substrate_names
 
-        field_keys = [f'internalized_total_substrates_{i}' for i in range(len(names))]
-        if not names or not all(k in columns for k in field_keys):
+        # Resolve the field's column names the same way the parser named them.
+        # A size-1 vector is stored under the bare name, a size-3 vector under
+        # _x/_y/_z, others under _0.._{n-1}; hardcoding one convention breaks
+        # for single- and triple-substrate models.
+        field_label = None
+        try:
+            custom_labels = self._load_metadata().extra.get('custom_labels') or {}
+        except (OSError, ET.ParseError):
+            custom_labels = {}
+        for start, (label_name, size) in custom_labels.items():
+            if label_name == 'internalized_total_substrates':
+                field_label = (start, size)
+                break
+
+        field_keys = None
+        if names and field_label is not None:
+            start, size = field_label
+            if size == len(names):
+                expanded = expand_cell_labels(
+                    {start: ('internalized_total_substrates', size)}
+                )
+                field_keys = [expanded[start + off] for off in range(size)]
+
+        if field_keys is None or not all(k in columns for k in field_keys):
             raise ValueError(
                 "This frame does not record internalized substrates. It "
                 "requires the PhysiCell 'internalized_total_substrates' field "
-                "and readable XML <labels>; neither is optional here."
+                "(sized to the substrate count) and readable XML <labels>; "
+                "neither is optional here."
             )
 
         if include_dead_cells is None:

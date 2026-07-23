@@ -93,12 +93,16 @@ def spatial_gradient(
         ``(m, n_dims)`` points at which to evaluate the gradient. Defaults to
         ``positions``. The reported ``values`` are then nearest-source samples.
     k : int, default 12
-        Number of neighbors for each local fit. Clamped to the number of source
-        points; a fit needs at least ``n_dims + 1`` points to be well-posed.
+        Number of neighbors for each local fit. Raised to at least ``n_dims + 1``
+        (a fit needs that many points to be well-posed) and capped at the number
+        of source points.
 
     Returns
     -------
     GradientField
+        Points whose local fit is under-determined -- too few points, or
+        collinear/degenerate neighbors -- get a ``NaN`` gradient rather than a
+        misleading minimum-norm estimate.
 
     Raises
     ------
@@ -125,7 +129,9 @@ def spatial_gradient(
         if query.ndim != 2 or query.shape[1] != ndim:
             raise ValueError(f"query_points must be (m, {ndim})")
 
-    k_eff = min(k, n)
+    # A well-posed local linear fit needs at least ndim + 1 points; ask for that
+    # many even if the caller passed a smaller k. Still capped at n.
+    k_eff = min(max(k, ndim + 1), n)
     tree = cKDTree(positions)
     _, idx = tree.query(query, k=k_eff)
     idx = np.atleast_2d(idx.T).T  # ensure (m, k_eff) even when k_eff == 1
@@ -141,8 +147,14 @@ def spatial_gradient(
         # Local design matrix [1, dx, dy, ...] centered on the query point.
         offsets = positions[neigh] - query[i]
         design = np.column_stack([np.ones(len(neigh)), offsets])
-        coeffs, *_ = np.linalg.lstsq(design, values[neigh], rcond=None)
-        gradients[i] = coeffs[1:]
+        coeffs, _, rank, _ = np.linalg.lstsq(design, values[neigh], rcond=None)
+        if rank < ndim + 1:
+            # Under-determined (too few points, or collinear/degenerate
+            # neighbors): the gradient is not identifiable. Flag rather than
+            # return the misleading minimum-norm solution.
+            gradients[i] = np.nan
+        else:
+            gradients[i] = coeffs[1:]
 
     return GradientField(points=query, gradients=gradients, values=sampled)
 
